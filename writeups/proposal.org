@@ -1,0 +1,28 @@
+#+TITLE: Fermionic Magic Research
+#+AUTHOR: Yusheng Zhao
+#+DATE: <2024-02-25 Sun>
+
+* Motivation
+It is often asked what are the some of the most important applications of a
+quantum computer. Embarrassingly, the answer is a short one. Currently, the only
+quantum algorithm that provides exponential speed up comparing to the classical
+counter-part is Shor's algorithm. Making things even worse, Shor's algorithm
+does not solve any problem, it poses more problem in the sense that it will
+destroy an encryption system that is working.
+
+In response to this, we are looking for a new quantum algorithm that can solve
+practically useful problems. Finding such an algorithm is not an easy task,
+especially when we don't know what IS the difference between classical and
+quantum computing. Therefore, we will have the motivation of understanding what
+makes a quantum circuit hard to simulate. More specifically, we will have the
+motivation of understanind it in the setting of fermionic quantum circuits.
+
+* Goal
+Implement algorithms for classically simulating fermoinic quantum circuits. This
+could be done in many different ways, including but not limited to, using
+ZW-Calculus, algorithms mentioned in paper.
+
+* Time-line
+
+* References
+-
