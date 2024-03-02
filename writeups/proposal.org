@@ -1,6 +1,17 @@
 #+TITLE: Fermionic Magic Research
-#+AUTHOR: Yusheng Zhao
+#+AUTHOR: Yusheng Zhao && Chengkai Zhu
 #+DATE: <2024-02-25 Sun>
+
+* Literature Review
+** Why were others interested initially?
+- [[http://www.physics.usyd.edu.au/quantum/Coogee2020/Presentations/Jozsa.pdf][Slides]]
+
+  What about the qip talks
+
+  https://www.quantamagazine.org/the-quest-to-quantify-quantumness-20231019/
+** QIP 2024
+*** Talks
+Classical simulation of non-Gaussian fermionic circuits: Beatriz Cardoso Dias and Robert Koenig.
 
 * Motivation
 It is often asked what are the some of the most important applications of a
