@@ -75,8 +75,15 @@ ideas or questions that utilize such simulator.
   and this was subsequently shown to be complete [44]. This hierarchy also
   provides a way of determining whether a state is close to being
   convex-Gaussian"
+- [[https://arxiv.org/abs/2204.12051][Sensitivity]] and how does it relate to magic and give quantum advantage
+- [[https://www.semanticscholar.org/reader/5b06f89e5c4854e291aef2522a670b8bb00acafd][Trainability]] hints classical simulatability in terms of barren plateau
 
+** More
+We can follow this [[https://www.connectedpapers.com/main/254a94aa88d2a42cbdf03af6c0520020356ee9d1/graph?utm_source=share_popup&utm_medium=copy_link&utm_campaign=share_graph][link]] and paper in it. (This link focus on the first paper)
+
+We can also follow this [[https://www.connectedpapers.com/main/94aef4b3f4da51a317257b710029e58e9e09fdfb+45a1272b0b318895d98825f5aa024eeaac8dcb06+ba3e7896a19e4a8722d512a04309d8d8d84ae3a0/graph?utm_source=share_popup&utm_medium=copy_link&utm_campaign=share_graph][link]] this graph focuses on all three paper.
 * Time-line
+
 ???
 
 * References

@@ -1,4 +1,4 @@
-% Created 2024-03-02 Sat 21:50
+% Created 2024-03-02 Sat 22:08
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -28,11 +28,11 @@
 \tableofcontents
 
 \section{Motivation}
-\label{sec:orgee61e3a}
+\label{sec:org14c52af}
 \subsection{For Others}
-\label{sec:org9c001c9}
+\label{sec:orgd051d34}
 \subsubsection{All pure fermionic non–Gaussian states are magic states for matchgate computations}
-\label{sec:orgba46165}
+\label{sec:orgf222898}
 Presumably, quantum computation is more powerful thant classical ones because it
 can provide certain ``quantum-resources''. In the NISQ era, where such provided
 resources are limited, we must use them economically in order to gain the most
@@ -50,30 +50,30 @@ by matchgates circuits are those that correspond to non-interaction fermion
 states. Therefore, these states can be interpreted physically more directly.
 \begin{enumerate}
 \item Resources
-\label{sec:org0e2f176}
+\label{sec:orgc29793a}
 \begin{itemize}
 \item \href{http://www.physics.usyd.edu.au/quantum/Coogee2020/Presentations/Jozsa.pdf}{Slides}
 \end{itemize}
 \end{enumerate}
 \subsubsection{Classical simulation of non-Gaussian fermionic circuits}
-\label{sec:org05242e3}
+\label{sec:org734544c}
 This contains algorithm for simulating Gaussian or non-Gaussian fermionic
 circuits. Realizing the algorithm seems like merely a muscle workout.
 \begin{enumerate}
 \item Resources
-\label{sec:orga5dc0a1}
+\label{sec:org42b7556}
 There is a QIP 2024 talk: Classical simulation of non-Gaussian fermionic
 circuits: Beatriz Cardoso Dias and Robert Koenig. Unfortunately, there's no
 recording just yet.
 \end{enumerate}
 \subsubsection{Improved simulation of quantum circuits dominated by free fermionic operations}
-\label{sec:orgdfa7b4e}
+\label{sec:org08befbe}
 This too.
 \subsubsection{Quanta Magazine Entry}
-\label{sec:org8641574}
+\label{sec:org3481684}
 \url{https://www.quantamagazine.org/the-quest-to-quantify-quantumness-20231019/}
 \subsection{For Me}
-\label{sec:orgfc1ec86}
+\label{sec:org3c28ae9}
 It is often asked what are the some of the most important applications of a
 quantum computer. Embarrassingly, the answer is a short one. Currently, the only
 quantum algorithm that provides exponential speed up comparing to the classical
@@ -88,13 +88,13 @@ quantum computing. Therefore, we will have the motivation of understanding what
 makes a quantum circuit hard to simulate. More specifically, we will have the
 motivation of understanind it in the setting of fermionic quantum circuits.
 \section{Goal}
-\label{sec:orge7c3add}
+\label{sec:org0de3c6c}
 Implement algorithms for classically simulating fermoinic quantum circuits. This
 could be done in many different ways, including but not limited to, using
 ZW-Calculus, algorithms mentioned in paper. This could make way for the later
 investigation of this area.
 \section{Potential Ideas?}
-\label{sec:org84e24c9}
+\label{sec:org4119409}
 Besides the implementation of an efficient simulator, we need to think about
 ideas or questions that utilize such simulator.
 
@@ -111,10 +111,18 @@ semidefinite programs was constructed in [31] to detect convex-Gaussianity,
 and this was subsequently shown to be complete [44]. This hierarchy also
 provides a way of determining whether a state is close to being
 convex-Gaussian''
+\item \href{https://arxiv.org/abs/2204.12051}{Sensitivity} and how does it relate to magic and give quantum advantage
+\item \href{https://www.semanticscholar.org/reader/5b06f89e5c4854e291aef2522a670b8bb00acafd}{Trainability} hints classical simulatability in terms of barren plateau
 \end{itemize}
+\subsection{More}
+\label{sec:org55c3465}
+We can follow this \href{https://www.connectedpapers.com/main/254a94aa88d2a42cbdf03af6c0520020356ee9d1/graph?utm\_source=share\_popup\&utm\_medium=copy\_link\&utm\_campaign=share\_graph}{link} and paper in it. (This link focus on the first paper)
+
+We can also follow this \href{https://www.connectedpapers.com/main/94aef4b3f4da51a317257b710029e58e9e09fdfb+45a1272b0b318895d98825f5aa024eeaac8dcb06+ba3e7896a19e4a8722d512a04309d8d8d84ae3a0/graph?utm\_source=share\_popup\&utm\_medium=copy\_link\&utm\_campaign=share\_graph}{link} this graph focuses on all three paper.
 \section{Time-line}
-\label{sec:org937c1c6}
+\label{sec:org52fda1a}
+
 ???
 \section{References}
-\label{sec:org9067e50}
+\label{sec:org0803662}
 \end{document}
