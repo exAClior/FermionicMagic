@@ -2,17 +2,6 @@
 #+AUTHOR: Yusheng Zhao && Chengkai Zhu
 #+DATE: <2024-02-25 Sun>
 
-* Question
-** Why were others interested initially?
-- [[http://www.physics.usyd.edu.au/quantum/Coogee2020/Presentations/Jozsa.pdf][Slides]]
-
-  What about the qip talks
-
-  https://www.quantamagazine.org/the-quest-to-quantify-quantumness-20231019/
-** QIP 2024
-*** Talks
-Classical simulation of non-Gaussian fermionic circuits: Beatriz Cardoso Dias and Robert Koenig.
-
 * Motivation
 ** For Others
 *** All pure fermionic non–Gaussian states are magic states for matchgate computations
@@ -31,9 +20,24 @@ circuits with Matchgate circuits. Matchgate circuits are those that are created
 by matchgates. The reason for considering such variant is that states preparable
 by matchgates circuits are those that correspond to non-interaction fermion
 states. Therefore, these states can be interpreted physically more directly.
+**** Resources
+- [[http://www.physics.usyd.edu.au/quantum/Coogee2020/Presentations/Jozsa.pdf][Slides]]
 
 *** Classical simulation of non-Gaussian fermionic circuits
+This contains algorithm for simulating Gaussian or non-Gaussian fermionic
+circuits. Realizing the algorithm seems like merely a muscle workout.
+
+**** Resources
+There is a QIP 2024 talk: Classical simulation of non-Gaussian fermionic
+circuits: Beatriz Cardoso Dias and Robert Koenig. Unfortunately, there's no
+recording just yet.
+
+
 *** Improved simulation of quantum circuits dominated by free fermionic operations
+This too.
+
+*** Quanta Magazine Entry
+  https://www.quantamagazine.org/the-quest-to-quantify-quantumness-20231019/
 ** For Me
 It is often asked what are the some of the most important applications of a
 quantum computer. Embarrassingly, the answer is a short one. Currently, the only
@@ -52,9 +56,27 @@ motivation of understanind it in the setting of fermionic quantum circuits.
 * Goal
 Implement algorithms for classically simulating fermoinic quantum circuits. This
 could be done in many different ways, including but not limited to, using
-ZW-Calculus, algorithms mentioned in paper.
+ZW-Calculus, algorithms mentioned in paper. This could make way for the later
+investigation of this area.
+
+* Potential Ideas?
+Besides the implementation of an efficient simulator, we need to think about
+ideas or questions that utilize such simulator.
+
+- https://arxiv.org/pdf/2402.18665.pdf
+- "Here a density operator is called convex-Gaussian if it is a convex
+  combination of fermionic Gaussian states. The utility of this concept was
+  illustrated in [31] by showing a converse to the fault-tolerance threshold
+  theorem: Sufficiently noisy quantum circuits can be simulated classically
+  because the corresponding states turn out to be convex-Gaussian. A detailed
+  characteriziation of convex-Gaussianity is necessary to translate this into
+  explicit (numerical) threshold estimates. An infinite hierarchy of
+  semidefinite programs was constructed in [31] to detect convex-Gaussianity,
+  and this was subsequently shown to be complete [44]. This hierarchy also
+  provides a way of determining whether a state is close to being
+  convex-Gaussian"
 
 * Time-line
+???
 
 * References
--

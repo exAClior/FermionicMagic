@@ -1,0 +1,120 @@
+% Created 2024-03-02 Sat 21:50
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{Yusheng Zhao \&\& Chengkai Zhu}
+\date{\textit{<2024-02-25 Sun>}}
+\title{Fermionic Magic Research}
+\hypersetup{
+ pdfauthor={Yusheng Zhao \&\& Chengkai Zhu},
+ pdftitle={Fermionic Magic Research},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.2 (Org mode 9.7)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Motivation}
+\label{sec:orgee61e3a}
+\subsection{For Others}
+\label{sec:org9c001c9}
+\subsubsection{All pure fermionic non–Gaussian states are magic states for matchgate computations}
+\label{sec:orgba46165}
+Presumably, quantum computation is more powerful thant classical ones because it
+can provide certain ``quantum-resources''. In the NISQ era, where such provided
+resources are limited, we must use them economically in order to gain the most
+use out of quantum computers.
+
+One kind of such quantum resource is known as ``magic''. It originates from
+Clifford circuits, a class of classically efficiently simulatable quantum
+circuits. Clifford circuits are comprised of Clifford gates. When Clifford gates
+and adaptive measurements are supplied with magic states, we retrieve universal
+quantum computation. In this paper, they focus on a different kind of magic
+known as fermionic magic. The concept is similar, you only replace the clifford
+circuits with Matchgate circuits. Matchgate circuits are those that are created
+by matchgates. The reason for considering such variant is that states preparable
+by matchgates circuits are those that correspond to non-interaction fermion
+states. Therefore, these states can be interpreted physically more directly.
+\begin{enumerate}
+\item Resources
+\label{sec:org0e2f176}
+\begin{itemize}
+\item \href{http://www.physics.usyd.edu.au/quantum/Coogee2020/Presentations/Jozsa.pdf}{Slides}
+\end{itemize}
+\end{enumerate}
+\subsubsection{Classical simulation of non-Gaussian fermionic circuits}
+\label{sec:org05242e3}
+This contains algorithm for simulating Gaussian or non-Gaussian fermionic
+circuits. Realizing the algorithm seems like merely a muscle workout.
+\begin{enumerate}
+\item Resources
+\label{sec:orga5dc0a1}
+There is a QIP 2024 talk: Classical simulation of non-Gaussian fermionic
+circuits: Beatriz Cardoso Dias and Robert Koenig. Unfortunately, there's no
+recording just yet.
+\end{enumerate}
+\subsubsection{Improved simulation of quantum circuits dominated by free fermionic operations}
+\label{sec:orgdfa7b4e}
+This too.
+\subsubsection{Quanta Magazine Entry}
+\label{sec:org8641574}
+\url{https://www.quantamagazine.org/the-quest-to-quantify-quantumness-20231019/}
+\subsection{For Me}
+\label{sec:orgfc1ec86}
+It is often asked what are the some of the most important applications of a
+quantum computer. Embarrassingly, the answer is a short one. Currently, the only
+quantum algorithm that provides exponential speed up comparing to the classical
+counter-part is Shor's algorithm. Making things even worse, Shor's algorithm
+does not solve any problem, it poses more problem in the sense that it will
+destroy an encryption system that is working.
+
+In response to this, we are looking for a new quantum algorithm that can solve
+practically useful problems. Finding such an algorithm is not an easy task,
+especially when we don't know what IS the difference between classical and
+quantum computing. Therefore, we will have the motivation of understanding what
+makes a quantum circuit hard to simulate. More specifically, we will have the
+motivation of understanind it in the setting of fermionic quantum circuits.
+\section{Goal}
+\label{sec:orge7c3add}
+Implement algorithms for classically simulating fermoinic quantum circuits. This
+could be done in many different ways, including but not limited to, using
+ZW-Calculus, algorithms mentioned in paper. This could make way for the later
+investigation of this area.
+\section{Potential Ideas?}
+\label{sec:org84e24c9}
+Besides the implementation of an efficient simulator, we need to think about
+ideas or questions that utilize such simulator.
+
+\begin{itemize}
+\item \url{https://arxiv.org/pdf/2402.18665.pdf}
+\item ``Here a density operator is called convex-Gaussian if it is a convex
+combination of fermionic Gaussian states. The utility of this concept was
+illustrated in [31] by showing a converse to the fault-tolerance threshold
+theorem: Sufficiently noisy quantum circuits can be simulated classically
+because the corresponding states turn out to be convex-Gaussian. A detailed
+characteriziation of convex-Gaussianity is necessary to translate this into
+explicit (numerical) threshold estimates. An infinite hierarchy of
+semidefinite programs was constructed in [31] to detect convex-Gaussianity,
+and this was subsequently shown to be complete [44]. This hierarchy also
+provides a way of determining whether a state is close to being
+convex-Gaussian''
+\end{itemize}
+\section{Time-line}
+\label{sec:org937c1c6}
+???
+\section{References}
+\label{sec:org9067e50}
+\end{document}
