@@ -10,9 +10,14 @@ abstract type AbstractQCState end # could include classical state
 
 abstract type AbstractGaussianState <: AbstractQCState end # includes Gaussian State
 
+
+# TODO: given a covariance matrix, how can I compute the r easily?
 struct GaussianState{T<:AbstractFloat} <: AbstractGaussianState
-    covMatrix::AbstractMatrix{T}
+    # covariance matrix
+    #  Γ = ⊕_i = 1 ^ n ( 0  (-1)^xi; - (-1)^xi  0)  
+    Γ::AbstractMatrix{T}
     # reference state
+    # x = x1 x2 ... xn
     x::BitArray
     # overlap with reference state
     r::Complex{T}
@@ -22,13 +27,15 @@ end
 macro G_str(a)
     quote
         T = Float64
-        x = BitArray(map(x -> (x == '1'), collect($a)))
+        matched = match(r"(^[01]+)", $a)
+        matched === nothing && error("Input should be a string of 0s and 1s")
+        x = BitArray(map(x -> (x == '1'), collect(matched[1])))
         Γ = directsum([ xi ? [0 -1; 1 0] : [0 1; -1 0] for xi in x])
         GaussianState{T}(Γ, x,Complex{T}(1.0))
     end
 end
 
-# functionality in BlockDiagonals
+# same functionality could be found in BlockDiagonals
 function directsum(as::AbstractVector{MT}) where {T <: Number, MT <: AbstractMatrix{T}}
     r_dim = mapreduce(x -> size(x,1), +, as)
     c_dim = mapreduce(x -> size(x,2), +, as)
