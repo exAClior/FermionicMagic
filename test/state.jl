@@ -16,9 +16,10 @@ using Test, FermionicMagic
 
     @test_throws ErrorException vac_state = G"21" # should throw an error
 
+    rand_bits = rand(Bool,5)
+    Γ = directsum([x ? Float64[0 -1; 1 0] : Float64[0 1; -1 0] for x in rand_bits])
 
-
-
+    @test findsupport(Γ) == rand_bits 
 end
 
 
