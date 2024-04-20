@@ -93,13 +93,14 @@ function findsupport(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
 end
 
 
-function relatebasiselements(::Type{T}, x::BitArray, y::BitArray) where {T<:AbstractFloat}
-    length(x) == length(y) || error("The length of x and y should be the same")
-    α = BitArray([isodd(i) ? (x[i÷2+1] ⊻ y[i÷2+1]) : zero(eltype(x)) for i in 1:(2 * length(x))])
+function relatebasiselements(::Type{T}, x::BitVector, y::BitVector) where {T<:AbstractFloat}
+    length(x) == length(y) || throw(ArgumentError("x and y should have the same length"))
+    N = length(x)
+    α = BitArray([isodd(i) ? (x[i÷2+1] ⊻ y[i÷2+1]) : zero(eltype(x)) for i in 1:(2 * N)])
     ν = zero(T)
     η_j = zero(T)
     # α0 + α^†0 don't contribute to the overlap
-    @inbounds @simd for j in 2:length(x) 
+    @inbounds for j in 2:N 
         η_j += x[j] ? one(T) : zero(T)
         ν += x[j] ⊻ y[j] ? one(T) : zero(T)
     end
@@ -109,7 +110,11 @@ function relatebasiselements(::Type{T}, x::BitArray, y::BitArray) where {T<:Abst
     return (α, ν)
 end
 
-relatebasiselements(x::BitArray, y::BitArray) = relatebasiselements(Float64, x, y)
+relatebasiselements(x::BitVector, y::BitVector) = relatebasiselements(Float64, x, y)
+
+function overlaptriple(Γ0::AbstractMatrix{T},Γ1::AbstractMatrix{T},Γ2::AbstractMatrix{T},α::BitArray{N}) where {T<:AbstractFloat,N}
+    nothing
+end
 
 function overlap(a::GaussianState, b::GaussianState)
     return 0.0
