@@ -88,10 +88,28 @@ function findsupport(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
                 (Γ[2 * jj - 1, ll] * Γ[2 * jj, kk] - Γ[2 * jj - 1, kk] * Γ[2 * jj, ll])
         end
         Γ = Γ_nxt - transpose(Γ_nxt)
-        @show Γ
     end
     return res
 end
+
+
+function relatebasiselements(::Type{T}, x::BitArray, y::BitArray) where {T<:AbstractFloat}
+    length(x) == length(y) || error("The length of x and y should be the same")
+    α = BitArray([isodd(i) ? (x[i÷2+1] ⊻ y[i÷2+1]) : zero(eltype(x)) for i in 1:(2 * length(x))])
+    ν = zero(T)
+    η_j = zero(T)
+    # α0 + α^†0 don't contribute to the overlap
+    @inbounds @simd for j in 2:length(x) 
+        η_j += x[j] ? one(T) : zero(T)
+        ν += x[j] ⊻ y[j] ? one(T) : zero(T)
+    end
+    ν *= π
+    x_y_mod = count(x .⊻ y)
+    ν += π / 4 * x_y_mod * (x_y_mod - 1) 
+    return (α, ν)
+end
+
+relatebasiselements(x::BitArray, y::BitArray) = relatebasiselements(Float64, x, y)
 
 function overlap(a::GaussianState, b::GaussianState)
     return 0.0
@@ -102,8 +120,6 @@ function evolve(a::GaussianState, R::AbstractMatrix)
 end
 
 # j: fermion index , s:: fermion occupation 
-function measureprob(a::GaussianState, j::Integer, s::Bool)
-end
+function measureprob(a::GaussianState, j::Integer, s::Bool) end
 
-function postmeasure(a::GaussianState, j::Integer, s::Bool, p::Real)
-end
+function postmeasure(a::GaussianState, j::Integer, s::Bool, p::Real) end

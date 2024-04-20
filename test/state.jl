@@ -22,4 +22,16 @@ using Test, FermionicMagic
     @test findsupport(Γ) == rand_bits 
 end
 
+@testset "relatebasiselements" begin
+    x = BitArray([true]) 
+    y = BitArray([false]) 
 
+    @test relatebasiselements(x,x) == (BitArray([false, false]), 0.0)
+    @test relatebasiselements(x,y) == (BitArray([true, false]), 0.0)
+
+    # TODO: need more rigorous tests
+    x = BitArray([true, false, true])
+    y = BitArray([false, true, true])
+    @test relatebasiselements(x,y) == (BitArray([true, false, true, false, false, false]), π*3/2)
+
+end
