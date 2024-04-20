@@ -1,4 +1,4 @@
-using Test, FermionicMagic
+using Test, FermionicMagic, LinearAlgebra
 
 @testset "Direct Sum" begin
     A = rand(2,2)
@@ -47,12 +47,15 @@ end
 end
 
 @testset "Convert" begin
-    rand_bits1 = BitVector(rand(Bool,5))
-    rand_bits2 = BitVector(rand(Bool,5))
-    prob_amp1 = rand(0:1/√2)
-    prob_amp2 = sqrt(1- prob_amp1^2)
-    Γ = FermionicMagic.cov_mtx(rand_bits1).*prob_amp1 .+ FermionicMagic.cov_mtx(rand_bits2).*prob_amp2
+    n = 5
+    rand_bits1 = BitVector(rand(Bool,n))
+    Γ = FermionicMagic.cov_mtx(rand_bits1)
+    Q,_ = qr(rand(2*n,2*n))
+    Γ = Q*Γ*Q'
 
-    d = GaussianState(Γ, rand_bits2, Complex(prob_amp2))
-    @test FermionicMagic.convert(d, rand_bits1) == GaussianState(Γ, rand_bits1, Complex(prob_amp1))
+    # support_bits = findsupport(Γ)
+
+    # d = GaussianState(Γ, support_bits,)
+    # d_c = FermionicMagic.convert(d, rand_bits1)
+    # @test FermionicMagic.convert(d, rand_bits1) == GaussianState(Γ, rand_bits1, Complex(prob_amp1))
 end

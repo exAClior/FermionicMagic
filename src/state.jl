@@ -34,7 +34,8 @@ end
 ref_state(a::GaussianState{T}) where {T} = a.x
 
 cov_mtx(a::GaussianState{T}) where {T} = a.Γ
-cov_mtx(x::BitVector) = directsum([xi ? [0 -1; 1 0] : [0 1; -1 0] for xi in x])
+cov_mtx(::Type{T}, x::BitVector) where {T<:AbstractFloat} = directsum([xi ? T[0 -1; 1 0] : T[0 1; -1 0] for xi in x])
+cov_mtx(x::BitVector) = cov_mtx(Float64, x)
 
 phase(a::GaussianState{T}) where {T} = a.r
 
@@ -125,9 +126,10 @@ function overlaptriple(
     Γ1::AbstractMatrix{T},
     Γ2::AbstractMatrix{T},
     α::BitVector,
-    u::T,
-    v::T,
+    u::Complex{T},
+    v::Complex{T},
 ) where {T<:AbstractFloat}
+    @show pfaffian(Γ0), pfaffian(Γ1), pfaffian(Γ2)
     parity = pfaffian(Γ0)
     (parity == pfaffian(Γ1) == pfaffian(Γ2)) ||
         throw(ArgumentError("Γ0, Γ1, and Γ2 should have the same Pfaffian"))
@@ -141,13 +143,13 @@ function overlaptriple(
     J_α = zeros(mag_α, 2 * n)
     jj = 0
     for ii in 1:(2 * n)
-        if a[ii]
+        if α[ii]
             jj += 1
             J_α[jj, ii] = one(T)
         end
     end
     # TODO: need to verify this part mathematically
-    R_α = zeros(6 * n + mag_α, 6 * n + mag_α)
+    R_α = zeros(Complex{T},6 * n + mag_α, 6 * n + mag_α)
     R_α[1:(2 * n), 1:(2 * n)] = im .* Γ0
     R_α[1:(2 * n), (2 * n + 1):(4 * n)] = -one(T) * I(2 * n)
     R_α[(2 * n + 1):(4 * n), 1:(2 * n)] = one(T) * I(2 * n)
@@ -162,7 +164,10 @@ function overlaptriple(
     R_α[(6 * n + 1):(6 * n + mag_α), (6 * n + 1):(6 * n + mag_α)] =
         im .* J_α * Γ2 * transpose(J_α)
 
-    return parity * im^(n + mag_α * (mag_a - 1) / 2) * pfaffian(R_α) / u / v / 4^(n)
+    @show findall(x->!isapprox(abs(x),0.0),R_α .+ transpose(R_α))
+    @show size(R_α), n , mag_α
+
+    return parity * im^(n + mag_α * (mag_α - 1) / 2) * pfaffian(R_α) / u / v / 4^(n)
 end
 
 function convert(d::GaussianState{T}, y::BitVector) where {T}
