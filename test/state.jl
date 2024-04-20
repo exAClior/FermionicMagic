@@ -33,5 +33,8 @@ end
     x = BitArray([true, false, true])
     y = BitArray([false, true, true])
     @test relatebasiselements(x,y) == (BitArray([true, false, true, false, false, false]), π*3/2)
+end
 
+@testset "Overlap triple" begin
+   # TODO: need to implement 
 end

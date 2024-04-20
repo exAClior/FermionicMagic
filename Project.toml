@@ -3,6 +3,10 @@ uuid = "8703e7a7-7bfb-467c-89f2-4bca801e3005"
 authors = ["Yusheng Zhao <yushengzhao2020@outlook.com> and contributors"]
 version = "1.0.0-DEV"
 
+[deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+SkewLinearAlgebra = "5c889d49-8c60-4500-9d10-5d3a22e2f4b9"
+
 [compat]
 julia = "1"
 

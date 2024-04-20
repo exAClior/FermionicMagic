@@ -18,7 +18,7 @@ struct GaussianState{T<:AbstractFloat} <: AbstractGaussianState
     Γ::AbstractMatrix{T}
     # reference state
     # x = x1 x2 ... xn
-    x::BitArray
+    x::BitVector
     # overlap with reference state
     r::Complex{T}
 end
@@ -26,10 +26,17 @@ end
 # describe function
 function GaussianState(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
     n = size(Γ, 1) ÷ 2
-    x = BitArray([Γ[2 * i - 1, 2 * i] == -1 for i in 1:n])
+    x = BitVector([Γ[2 * i - 1, 2 * i] == -1 for i in 1:n])
     r = Complex{T}(1.0)
     return GaussianState(Γ, x, r)
 end
+
+ref_state(a::GaussianState{T}) where {T} = a.x
+
+cov_mtx(a::GaussianState{T}) where {T} = a.Γ
+cov_mtx(x::BitVector) = directsum([xi ? [0 -1; 1 0] : [0 1; -1 0] for xi in x])
+
+phase(a::GaussianState{T}) where {T} = a.r
 
 # create a Fock basis state in GaussianState notation
 macro G_str(a)
@@ -37,8 +44,8 @@ macro G_str(a)
         T = Float64
         matched = match(r"(^[01]+)", $a)
         matched === nothing && error("Input should be a string of 0s and 1s")
-        x = BitArray(map(x -> (x == '1'), collect(matched[1])))
-        Γ = directsum([xi ? [0 -1; 1 0] : [0 1; -1 0] for xi in x])
+        x = BitVector(map(x -> (x == '1'), collect(matched[1])))
+        Γ = cov_mtx(x) 
         GaussianState{T}(Γ, x, Complex{T}(1.0))
     end
 end
@@ -69,7 +76,7 @@ end
 function findsupport(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
     Γ = copy(Γ)
     n = size(Γ, 1) ÷ 2
-    res = BitArray(undef, n)
+    res = BitVector(undef, n)
 
     for jj in 1:n
         # probability of measuring the jj-th fermion in the |0> state
@@ -96,7 +103,7 @@ end
 function relatebasiselements(::Type{T}, x::BitVector, y::BitVector) where {T<:AbstractFloat}
     length(x) == length(y) || throw(ArgumentError("x and y should have the same length"))
     N = length(x)
-    α = BitArray([isodd(i) ? (x[i÷2+1] ⊻ y[i÷2+1]) : zero(eltype(x)) for i in 1:(2 * N)])
+    α = BitVector([isodd(i) ? (x[i÷2+1] ⊻ y[i÷2+1]) : zero(eltype(x)) for i in 1:(2 * N)])
     ν = zero(T)
     η_j = zero(T)
     # α0 + α^†0 don't contribute to the overlap
@@ -112,12 +119,57 @@ end
 
 relatebasiselements(x::BitVector, y::BitVector) = relatebasiselements(Float64, x, y)
 
-function overlaptriple(Γ0::AbstractMatrix{T},Γ1::AbstractMatrix{T},Γ2::AbstractMatrix{T},α::BitArray{N}) where {T<:AbstractFloat,N}
-    nothing
+function overlaptriple(Γ0::AbstractMatrix{T},Γ1::AbstractMatrix{T},Γ2::AbstractMatrix{T},α::BitVector, u::T ,v::T) where {T<:AbstractFloat}
+    parity = pfaffian(Γ0)
+    (parity == pfaffian(Γ1) == pfaffian(Γ2)) || throw(ArgumentError("Γ0, Γ1, and Γ2 should have the same Pfaffian"))
+    !iszero(u) || throw(ArgumentError("u should be non-zero"))
+    !iszero(v) || throw(ArgumentError("v should be non-zero"))
+
+    n = size(Γ0, 1) ÷ 2
+    mag_α = count(α)
+
+    D_α = Diagonal([ α[i] ? zero(T) : one(T) for i in 1:(2 * n)])
+    J_α = zeros(mag_α, 2*n)
+    jj = 0
+    for ii in 1:2*n
+        if a[ii] 
+            jj += 1
+            J_α[jj, ii] = one(T)
+        end
+    end
+    # TODO: need to verify this part mathematically
+    R_α = zeros(6*n+mag_α, 6*n+mag_α)
+    R_α[1:2*n, 1:2*n] = im.*Γ0
+    R_α[1:2*n, 2*n+1:4*n] = - one(T) * I(2*n)
+    R_α[2*n+1:4*n, 1:2*n] = one(T)*I(2*n)
+    R_α[2*n+1:4*n, 2*n+1:4*n] = im.*Γ1
+    R_α[2*n+1:4*n, 4*n+1:6*n] = - one(T) * I(2*n)
+    R_α[4*n+1:6*n, 1:2*n] = - one(T) * I(2*n)
+    R_α[4*n+1:6*n, 2*n+1:4n] = one(T) * I(2*n)
+    R_α[4*n+1:6*n, 4*n+1:6*n] = im.*D_α*Γ2*D_α
+    R_α[4*n+1:6*n, 6*n+1:6*n+mag_α] = transpose(J_α) .+ im.* D_α * Γ2 * transpose(J_α)
+    R_α[6*n+1:6*n+mag_α, 4*n+1:6*n] = - J_α .+ im.* J_α * Γ2 * D_α
+    R_α[6*n+1:6*n+mag_α, 6*n+1:6*n+mag_α] = im.* J_α * Γ2 * transpose(J_α)
+
+    return  parity * im^(n + mag_α * (mag_a-1)/2) * pfaffian(R_α) / u / v / 4^(n)
 end
 
-function overlap(a::GaussianState, b::GaussianState)
-    return 0.0
+function convert(d::GaussianState{T},y::BitVector) where {T}
+    # TODO: test overlap btw y and Ψ_d is nonzero
+
+    α, ν = relatebasiselements(y, ref_state(d))
+    Γ0 = cov_mtx(d)
+    Γ1 = cov_mtx(ref_state(d))
+    Γ2 = cov_mtx(y)
+    u = phase(d)'
+    v = exp(im*)
+    w = overlaptriple(Γ0,Γ1,Γ2,α,u,v)
+    return GaussianState(Γ0, y, w)
+end
+
+
+function overlap(a::GaussianState{T}, b::GaussianState{T}) where {T}
+    nothing
 end
 
 function evolve(a::GaussianState, R::AbstractMatrix)
