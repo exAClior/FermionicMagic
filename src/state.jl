@@ -23,7 +23,7 @@ struct GaussianState{T<:AbstractFloat} <: AbstractGaussianState
     r::Complex{T}
 end
 
-# describe function
+# TODO: not general, only for basis states
 function GaussianState(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
     n = size(Γ, 1) ÷ 2
     x = BitVector([Γ[2 * i - 1, 2 * i] == -1 for i in 1:n])
@@ -45,7 +45,7 @@ macro G_str(a)
         matched = match(r"(^[01]+)", $a)
         matched === nothing && error("Input should be a string of 0s and 1s")
         x = BitVector(map(x -> (x == '1'), collect(matched[1])))
-        Γ = cov_mtx(x) 
+        Γ = cov_mtx(x)
         GaussianState{T}(Γ, x, Complex{T}(1.0))
     end
 end
@@ -99,77 +99,86 @@ function findsupport(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
     return res
 end
 
-
 function relatebasiselements(::Type{T}, x::BitVector, y::BitVector) where {T<:AbstractFloat}
     length(x) == length(y) || throw(ArgumentError("x and y should have the same length"))
     N = length(x)
-    α = BitVector([isodd(i) ? (x[i÷2+1] ⊻ y[i÷2+1]) : zero(eltype(x)) for i in 1:(2 * N)])
+    α = BitVector([
+        isodd(i) ? (x[i ÷ 2 + 1] ⊻ y[i ÷ 2 + 1]) : zero(eltype(x)) for i in 1:(2 * N)
+    ])
     ν = zero(T)
     η_j = zero(T)
     # α0 + α^†0 don't contribute to the overlap
-    @inbounds for j in 2:N 
+    @inbounds for j in 2:N
         η_j += x[j] ? one(T) : zero(T)
         ν += x[j] ⊻ y[j] ? one(T) : zero(T)
     end
     ν *= π
     x_y_mod = count(x .⊻ y)
-    ν += π / 4 * x_y_mod * (x_y_mod - 1) 
+    ν += π / 4 * x_y_mod * (x_y_mod - 1)
     return (α, ν)
 end
 
 relatebasiselements(x::BitVector, y::BitVector) = relatebasiselements(Float64, x, y)
 
-function overlaptriple(Γ0::AbstractMatrix{T},Γ1::AbstractMatrix{T},Γ2::AbstractMatrix{T},α::BitVector, u::T ,v::T) where {T<:AbstractFloat}
+function overlaptriple(
+    Γ0::AbstractMatrix{T},
+    Γ1::AbstractMatrix{T},
+    Γ2::AbstractMatrix{T},
+    α::BitVector,
+    u::T,
+    v::T,
+) where {T<:AbstractFloat}
     parity = pfaffian(Γ0)
-    (parity == pfaffian(Γ1) == pfaffian(Γ2)) || throw(ArgumentError("Γ0, Γ1, and Γ2 should have the same Pfaffian"))
+    (parity == pfaffian(Γ1) == pfaffian(Γ2)) ||
+        throw(ArgumentError("Γ0, Γ1, and Γ2 should have the same Pfaffian"))
     !iszero(u) || throw(ArgumentError("u should be non-zero"))
     !iszero(v) || throw(ArgumentError("v should be non-zero"))
 
     n = size(Γ0, 1) ÷ 2
     mag_α = count(α)
 
-    D_α = Diagonal([ α[i] ? zero(T) : one(T) for i in 1:(2 * n)])
-    J_α = zeros(mag_α, 2*n)
+    D_α = Diagonal([α[i] ? zero(T) : one(T) for i in 1:(2 * n)])
+    J_α = zeros(mag_α, 2 * n)
     jj = 0
-    for ii in 1:2*n
-        if a[ii] 
+    for ii in 1:(2 * n)
+        if a[ii]
             jj += 1
             J_α[jj, ii] = one(T)
         end
     end
     # TODO: need to verify this part mathematically
-    R_α = zeros(6*n+mag_α, 6*n+mag_α)
-    R_α[1:2*n, 1:2*n] = im.*Γ0
-    R_α[1:2*n, 2*n+1:4*n] = - one(T) * I(2*n)
-    R_α[2*n+1:4*n, 1:2*n] = one(T)*I(2*n)
-    R_α[2*n+1:4*n, 2*n+1:4*n] = im.*Γ1
-    R_α[2*n+1:4*n, 4*n+1:6*n] = - one(T) * I(2*n)
-    R_α[4*n+1:6*n, 1:2*n] = - one(T) * I(2*n)
-    R_α[4*n+1:6*n, 2*n+1:4n] = one(T) * I(2*n)
-    R_α[4*n+1:6*n, 4*n+1:6*n] = im.*D_α*Γ2*D_α
-    R_α[4*n+1:6*n, 6*n+1:6*n+mag_α] = transpose(J_α) .+ im.* D_α * Γ2 * transpose(J_α)
-    R_α[6*n+1:6*n+mag_α, 4*n+1:6*n] = - J_α .+ im.* J_α * Γ2 * D_α
-    R_α[6*n+1:6*n+mag_α, 6*n+1:6*n+mag_α] = im.* J_α * Γ2 * transpose(J_α)
+    R_α = zeros(6 * n + mag_α, 6 * n + mag_α)
+    R_α[1:(2 * n), 1:(2 * n)] = im .* Γ0
+    R_α[1:(2 * n), (2 * n + 1):(4 * n)] = -one(T) * I(2 * n)
+    R_α[(2 * n + 1):(4 * n), 1:(2 * n)] = one(T) * I(2 * n)
+    R_α[(2 * n + 1):(4 * n), (2 * n + 1):(4 * n)] = im .* Γ1
+    R_α[(2 * n + 1):(4 * n), (4 * n + 1):(6 * n)] = -one(T) * I(2 * n)
+    R_α[(4 * n + 1):(6 * n), 1:(2 * n)] = -one(T) * I(2 * n)
+    R_α[(4 * n + 1):(6 * n), (2 * n + 1):(4n)] = one(T) * I(2 * n)
+    R_α[(4 * n + 1):(6 * n), (4 * n + 1):(6 * n)] = im .* D_α * Γ2 * D_α
+    R_α[(4 * n + 1):(6 * n), (6 * n + 1):(6 * n + mag_α)] =
+        transpose(J_α) .+ im .* D_α * Γ2 * transpose(J_α)
+    R_α[(6 * n + 1):(6 * n + mag_α), (4 * n + 1):(6 * n)] = -J_α .+ im .* J_α * Γ2 * D_α
+    R_α[(6 * n + 1):(6 * n + mag_α), (6 * n + 1):(6 * n + mag_α)] =
+        im .* J_α * Γ2 * transpose(J_α)
 
-    return  parity * im^(n + mag_α * (mag_a-1)/2) * pfaffian(R_α) / u / v / 4^(n)
+    return parity * im^(n + mag_α * (mag_a - 1) / 2) * pfaffian(R_α) / u / v / 4^(n)
 end
 
-function convert(d::GaussianState{T},y::BitVector) where {T}
+function convert(d::GaussianState{T}, y::BitVector) where {T}
     # TODO: test overlap btw y and Ψ_d is nonzero
-
     α, ν = relatebasiselements(y, ref_state(d))
     Γ0 = cov_mtx(d)
     Γ1 = cov_mtx(ref_state(d))
     Γ2 = cov_mtx(y)
     u = phase(d)'
-    v = exp(im*)
-    w = overlaptriple(Γ0,Γ1,Γ2,α,u,v)
+    v = exp(im * ν)
+    w = overlaptriple(Γ0, Γ1, Γ2, α, u, v)
     return GaussianState(Γ0, y, w)
 end
 
-
-function overlap(a::GaussianState{T}, b::GaussianState{T}) where {T}
-    nothing
+function overlap(d1::GaussianState{T}, d2::GaussianState{T}) where {T}
+    return nothing
 end
 
 function evolve(a::GaussianState, R::AbstractMatrix)

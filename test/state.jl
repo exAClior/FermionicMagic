@@ -20,6 +20,13 @@ using Test, FermionicMagic
     Γ = directsum([x ? Float64[0 -1; 1 0] : Float64[0 1; -1 0] for x in rand_bits])
 
     @test findsupport(Γ) == rand_bits 
+
+    rand_bits1 = BitVector(rand(Bool,5))
+    rand_bits2 = BitVector(rand(Bool,5))
+
+    Γ = FermionicMagic.cov_mtx(rand_bits1)./√3 .+ FermionicMagic.cov_mtx(rand_bits2).*(√2/√3)
+
+    @test findsupport(Γ) == rand_bits2
 end
 
 @testset "relatebasiselements" begin
@@ -37,4 +44,15 @@ end
 
 @testset "Overlap triple" begin
    # TODO: need to implement 
+end
+
+@testset "Convert" begin
+    rand_bits1 = BitVector(rand(Bool,5))
+    rand_bits2 = BitVector(rand(Bool,5))
+    prob_amp1 = rand(0:1/√2)
+    prob_amp2 = sqrt(1- prob_amp1^2)
+    Γ = FermionicMagic.cov_mtx(rand_bits1).*prob_amp1 .+ FermionicMagic.cov_mtx(rand_bits2).*prob_amp2
+
+    d = GaussianState(Γ, rand_bits2, Complex(prob_amp2))
+    @test FermionicMagic.convert(d, rand_bits1) == GaussianState(Γ, rand_bits1, Complex(prob_amp1))
 end
