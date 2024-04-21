@@ -25,7 +25,7 @@ function GaussianState(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
     n = size(Γ, 1) ÷ 2
     x = findsupport(Γ)
     σ = pfaffian(Γ)
-    r = sqrt(σ * 2^(-n) * pfaffian(cov_mtx(x) .+ Γ))
+    r = Complex{T}(sqrt(σ * pfaffian(cov_mtx(x) .+ Γ) / 2.0^n))
     return GaussianState(Γ, x, r)
 end
 
@@ -33,11 +33,6 @@ ref_state(a::GaussianState{T}) where {T} = a.ref_state
 overlap(a::GaussianState{T}) where {T} = a.overlap
 
 cov_mtx(a::GaussianState{T}) where {T} = a.Γ
-function cov_mtx(::Type{T}, x::BitVector) where {T<:AbstractFloat}
-    return directsum([xi ? T[0 -1; 1 0] : T[0 1; -1 0] for xi in x])
-end
-cov_mtx(x::BitVector) = cov_mtx(Float64, x)
-
 
 # create a Fock basis state in GaussianState notation
 macro G_str(a)
@@ -78,6 +73,7 @@ function findsupport(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
     Γ = copy(Γ)
     n = size(Γ, 1) ÷ 2
     res = BitVector(undef, n)
+    prob = one(T) 
 
     for jj in 1:n
         # probability of measuring the jj-th fermion in the |0> state
@@ -85,6 +81,7 @@ function findsupport(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
         res[jj] = p_jj < 0.5
         # change to most probable state probability
         p_jj = p_jj < 0.5 ? (1 - p_jj) : p_jj
+        prob *= p_jj
         Γ_nxt = zeros(T, 2 * n, 2 * n)
         Γ_nxt[2 * jj, 2 * jj - 1] = (-1)^res[jj]
 

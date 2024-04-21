@@ -1,3 +1,15 @@
+function rand_Orth_mtx(n)
+    Q, _ = qr(rand(n, n))
+    return Matrix(Q)
+end
+
+function rand_cov_mtx(n)
+    bits = BitVector(rand(Bool, n))
+    x = cov_mtx(bits)
+    Q = rand_Orth_mtx(2 * n)
+    return Q * x * Q'
+end
+
 # https://arxiv.org/pdf/1102.3440.pdf
 # TODO: need to reimplement
 # direct copy of https://github.com/KskAdch/TopologicalNumbers.jl/blob/main/src/pfaffian.jl
@@ -75,6 +87,12 @@ function pfaffian(A::AbstractMatrix{T}; overwrite_a=false) where {T<:Number}
 
     return pfaffian_val
 end
+
+function cov_mtx(::Type{T}, x::BitVector) where {T<:AbstractFloat}
+    return directsum([xi ? T[0 -1; 1 0] : T[0 1; -1 0] for xi in x])
+end
+cov_mtx(x::BitVector) = cov_mtx(Float64, x)
+
 
 # function rand_SOn(n)
 #     nothing
