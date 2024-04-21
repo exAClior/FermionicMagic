@@ -10,7 +10,6 @@ abstract type AbstractQCState end # could include classical state
 
 abstract type AbstractGaussianState <: AbstractQCState end # includes Gaussian State
 
-# TODO: given a covariance matrix, how can I compute the r easily?
 struct GaussianState{T<:AbstractFloat} <: AbstractGaussianState
     # covariance matrix
     # The order is diagm([Γ_1 Γ_2 ... Γ_n])
@@ -23,7 +22,6 @@ struct GaussianState{T<:AbstractFloat} <: AbstractGaussianState
     r::Complex{T}
 end
 
-# TODO: not general, only for basis states
 function GaussianState(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
     n = size(Γ, 1) ÷ 2
     x = BitVector([Γ[2 * i - 1, 2 * i] == -1 for i in 1:n])
@@ -34,7 +32,9 @@ end
 ref_state(a::GaussianState{T}) where {T} = a.x
 
 cov_mtx(a::GaussianState{T}) where {T} = a.Γ
-cov_mtx(::Type{T}, x::BitVector) where {T<:AbstractFloat} = directsum([xi ? T[0 -1; 1 0] : T[0 1; -1 0] for xi in x])
+function cov_mtx(::Type{T}, x::BitVector) where {T<:AbstractFloat}
+    return directsum([xi ? T[0 -1; 1 0] : T[0 1; -1 0] for xi in x])
+end
 cov_mtx(x::BitVector) = cov_mtx(Float64, x)
 
 phase(a::GaussianState{T}) where {T} = a.r
@@ -149,7 +149,7 @@ function overlaptriple(
         end
     end
     # TODO: need to verify this part mathematically
-    R_α = zeros(Complex{T},6 * n + mag_α, 6 * n + mag_α)
+    R_α = zeros(Complex{T}, 6 * n + mag_α, 6 * n + mag_α)
     R_α[1:(2 * n), 1:(2 * n)] = im .* Γ0
     R_α[1:(2 * n), (2 * n + 1):(4 * n)] = -one(T) * I(2 * n)
     R_α[(2 * n + 1):(4 * n), 1:(2 * n)] = one(T) * I(2 * n)
@@ -164,8 +164,8 @@ function overlaptriple(
     R_α[(6 * n + 1):(6 * n + mag_α), (6 * n + 1):(6 * n + mag_α)] =
         im .* J_α * Γ2 * transpose(J_α)
 
-    @show findall(x->!isapprox(abs(x),0.0),R_α .+ transpose(R_α))
-    @show size(R_α), n , mag_α
+    @show findall(x -> !isapprox(abs(x), 0.0), R_α .+ transpose(R_α))
+    @show size(R_α), n, mag_α
 
     return parity * im^(n + mag_α * (mag_α - 1) / 2) * pfaffian(R_α) / u / v / 4^(n)
 end
@@ -183,14 +183,82 @@ function convert(d::GaussianState{T}, y::BitVector) where {T}
 end
 
 function overlap(d1::GaussianState{T}, d2::GaussianState{T}) where {T}
-    return nothing
+    σ1, σ2 = pfaffian(cov_mtx(d1)), pfaffian(cov_mtx(d2))
+    isapprox(σ1, σ2; atol=1e-10) ||
+        throw(ArgumentError("The Pfaffians of the covariance matrices should be the same"))
+    α, ν = relatebasiselements(ref_state(d2), ref_state(d1))
+    Γ0_p = cov_mtx(d1)
+    Γ1_p = cov_mtx(ref_state(d1))
+    Γ2_p = cov_mtx(d2)
+
+    u = phase(d1)'
+    v = exp(im * ν) * phase(d2)
+    w = overlaptriple(Γ0_p, Γ1_p, Γ2_p, α, u, v)
+    return w'
 end
 
-function evolve(a::GaussianState, R::AbstractMatrix)
-    return copy(a)
+function evolve(R::AbstractMatrix{T}, a::GaussianState{T}) where {T}
+    Γ0 = R * cov_mtx(a) * transpose(R)
+    y = findsupport(Γ0)
+
+    z, s = rot_fock_basis(R, ref_state(a))
+
+    α, ν = relatebasiselements(y, z)
+    Γ1 = R * cov_mtx(ref_state(a)) * transpose(R)
+    Γ2 = cov_mtx(y)
+    u = phase(a)'
+    v = exp(im*ν) * s'
+    w = overlaptriple(Γ0, Γ1, Γ2, α, u, v)
+    return GaussianState(Γ0, y, w)
+end
+
+β_k(x::BitVector,k::Int) = count(x[1:k-1]) + (x[k] - 1/2) * (k+1)
+
+function rot_fock_basis(R::AbstractMatrix{T}, x::BitVector) where {T}
+    if isapprox(det(R), one(T))
+        j = findfirst(x->!isone(x),diag(R)) 
+        k = findfirst(x->!iszero(x),R[j+1:end,j])
+        ν = atan(R[k,j]/R[j,j])
+        if cos(ν/2)^2 >= 1/2
+            z = x
+            s = cos(ν/2)
+        else    
+            z = x .⊻ BitVector([(j == i || k == i) for i in 1:length(x)])
+            β = β_k[x,j] + β_k[x,k]
+            s = exp(im*π*β) * sin(ν/2)
+        end
+    elseif isapprox(det(R), - one(T))
+        j,k = findfirst(x->isapprox(x,one(T)),R)
+        j != k || throw(ArgumentError("R should be a reflection matrix"))
+        z = x .⊻ BitVector([j == i for i in 1:length(x)]) 
+        s = exp(im*β_k[x,j])
+    else
+        throw(ArgumentError("R should be a rotation matrix"))
+    end
+    return z, s
 end
 
 # j: fermion index , s:: fermion occupation 
-function measureprob(a::GaussianState, j::Integer, s::Bool) end
+measureprob(a::GaussianState{T}, j::Int, s::Bool) = (1 + (-1)^s * cov_mtx(a)[2 * j - 1, 2 * j]) / 2
 
-function postmeasure(a::GaussianState, j::Integer, s::Bool, p::Real) end
+
+function postmeasure(a::GaussianState{T}, j::Int, s::Bool, p::Real) where {T}
+    Γ_a = cov_mtx(a)
+    n = size(Γ_a, 1) ÷ 2
+    Γ_p = zeros(T, size(Γ_a))
+    Γ_p[2*j, 2*j-1] = (-one(T))^s
+    for ll in 1:n-1, kk in (ll+1):n
+        (kk,ll) == (2*j,2*j-1) && continue
+        Γ_p[kk,ll] = Γ_a[kk,ll] - (-one(T))^s / (2*p) * (Γ_a[2*j-1,ll] * Γ_a[2*j,kk] - Γ_a[2*j-1,kk] * Γ_a[2*j,ll])
+    end
+    Γ_p = Γ_p .- transpose(Γ_p)
+    y = findsupport(Γ_p)
+    α, ν = relatebasiselements(y, ref_state(a))
+    Γ_0 = Γ_a
+    Γ_1 = cov_mtx(ref_state(a))
+    Γ_2 = cov_mtx(y)
+    u = r'
+    v = exp(im*ν)
+    w = overlaptriple(Γ_0, Γ_1, Γ_2, α, u, v)
+    return GaussianState(Γ_p, y, w/sqrt(p))
+end
