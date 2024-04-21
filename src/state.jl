@@ -1,35 +1,36 @@
-
-# covariance matrix 
-# this is updated by R Γ R^T where R ∈ O(2n) and Γ is the covariance matrix
-# U_{R} represents the unitary evolution
-# struct CovMatrix
-#     data::Array{Complex{Float64},2}
-# end
-
 abstract type AbstractQCState end # could include classical state
 
 abstract type AbstractGaussianState <: AbstractQCState end # includes Gaussian State
 
+"""
+    struct GaussianState{T<:AbstractFloat} <: AbstractGaussianState
+
+A struct representing a Gaussian state.
+
+# Fields
+- `Γ::AbstractMatrix{T}`: The covariance matrix of the Gaussian state. 
+   The order is diagm([Γ_1 Γ_2 ... Γ_n])
+   Γ = ⊕ Γ_i = 1 ^ n ( 0  (-1)^xi; - (-1)^xi  0)  
+- `ref_state::BitVector`: A number state acting as the reference of the Gaussian state for phase.
+- `overlap::Complex{T}`: The overlap of the Gaussian state with reference state.
+"""
 struct GaussianState{T<:AbstractFloat} <: AbstractGaussianState
-    # covariance matrix
-    # The order is diagm([Γ_1 Γ_2 ... Γ_n])
-    #  Γ = ⊕_i = 1 ^ n ( 0  (-1)^xi; - (-1)^xi  0)  
     Γ::AbstractMatrix{T}
-    # reference state
-    # x = x1 x2 ... xn
-    x::BitVector
-    # overlap with reference state
-    r::Complex{T}
+    ref_state::BitVector
+    overlap::Complex{T}
 end
 
 function GaussianState(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
+    # TODO: check if Γ is a valid covariance matrix for pure gaussian state
     n = size(Γ, 1) ÷ 2
-    x = BitVector([Γ[2 * i - 1, 2 * i] == -1 for i in 1:n])
-    r = Complex{T}(1.0)
+    x = findsupport(Γ)
+    σ = pfaffian(Γ)
+    r = sqrt(σ * 2^(-n) * pfaffian(cov_mtx(x) .+ Γ))
     return GaussianState(Γ, x, r)
 end
 
-ref_state(a::GaussianState{T}) where {T} = a.x
+ref_state(a::GaussianState{T}) where {T} = a.ref_state
+overlap(a::GaussianState{T}) where {T} = a.overlap
 
 cov_mtx(a::GaussianState{T}) where {T} = a.Γ
 function cov_mtx(::Type{T}, x::BitVector) where {T<:AbstractFloat}
@@ -37,7 +38,6 @@ function cov_mtx(::Type{T}, x::BitVector) where {T<:AbstractFloat}
 end
 cov_mtx(x::BitVector) = cov_mtx(Float64, x)
 
-phase(a::GaussianState{T}) where {T} = a.r
 
 # create a Fock basis state in GaussianState notation
 macro G_str(a)
@@ -176,7 +176,7 @@ function convert(d::GaussianState{T}, y::BitVector) where {T}
     Γ0 = cov_mtx(d)
     Γ1 = cov_mtx(ref_state(d))
     Γ2 = cov_mtx(y)
-    u = phase(d)'
+    u = overlap(d)'
     v = exp(im * ν)
     w = overlaptriple(Γ0, Γ1, Γ2, α, u, v)
     return GaussianState(Γ0, y, w)
@@ -191,8 +191,8 @@ function overlap(d1::GaussianState{T}, d2::GaussianState{T}) where {T}
     Γ1_p = cov_mtx(ref_state(d1))
     Γ2_p = cov_mtx(d2)
 
-    u = phase(d1)'
-    v = exp(im * ν) * phase(d2)
+    u = overlap(d1)'
+    v = exp(im * ν) * overlap(d2)
     w = overlaptriple(Γ0_p, Γ1_p, Γ2_p, α, u, v)
     return w'
 end
@@ -206,32 +206,32 @@ function evolve(R::AbstractMatrix{T}, a::GaussianState{T}) where {T}
     α, ν = relatebasiselements(y, z)
     Γ1 = R * cov_mtx(ref_state(a)) * transpose(R)
     Γ2 = cov_mtx(y)
-    u = phase(a)'
-    v = exp(im*ν) * s'
+    u = overlap(a)'
+    v = exp(im * ν) * s'
     w = overlaptriple(Γ0, Γ1, Γ2, α, u, v)
     return GaussianState(Γ0, y, w)
 end
 
-β_k(x::BitVector,k::Int) = count(x[1:k-1]) + (x[k] - 1/2) * (k+1)
+β_k(x::BitVector, k::Int) = count(x[1:(k - 1)]) + (x[k] - 1 / 2) * (k + 1)
 
 function rot_fock_basis(R::AbstractMatrix{T}, x::BitVector) where {T}
     if isapprox(det(R), one(T))
-        j = findfirst(x->!isone(x),diag(R)) 
-        k = findfirst(x->!iszero(x),R[j+1:end,j])
-        ν = atan(R[k,j]/R[j,j])
-        if cos(ν/2)^2 >= 1/2
+        j = findfirst(x -> !isone(x), diag(R))
+        k = findfirst(x -> !iszero(x), R[(j + 1):end, j])
+        ν = atan(R[k, j] / R[j, j])
+        if cos(ν / 2)^2 >= 1 / 2
             z = x
-            s = cos(ν/2)
-        else    
+            s = cos(ν / 2)
+        else
             z = x .⊻ BitVector([(j == i || k == i) for i in 1:length(x)])
-            β = β_k[x,j] + β_k[x,k]
-            s = exp(im*π*β) * sin(ν/2)
+            β = β_k[x, j] + β_k[x, k]
+            s = exp(im * π * β) * sin(ν / 2)
         end
-    elseif isapprox(det(R), - one(T))
-        j,k = findfirst(x->isapprox(x,one(T)),R)
+    elseif isapprox(det(R), -one(T))
+        j, k = findfirst(x -> isapprox(x, one(T)), R)
         j != k || throw(ArgumentError("R should be a reflection matrix"))
-        z = x .⊻ BitVector([j == i for i in 1:length(x)]) 
-        s = exp(im*β_k[x,j])
+        z = x .⊻ BitVector([j == i for i in 1:length(x)])
+        s = exp(im * β_k[x, j])
     else
         throw(ArgumentError("R should be a rotation matrix"))
     end
@@ -239,17 +239,21 @@ function rot_fock_basis(R::AbstractMatrix{T}, x::BitVector) where {T}
 end
 
 # j: fermion index , s:: fermion occupation 
-measureprob(a::GaussianState{T}, j::Int, s::Bool) = (1 + (-1)^s * cov_mtx(a)[2 * j - 1, 2 * j]) / 2
-
+function measureprob(a::GaussianState{T}, j::Int, s::Bool) where {T}
+    return (1 + (-1)^s * cov_mtx(a)[2 * j - 1, 2 * j]) / 2
+end
 
 function postmeasure(a::GaussianState{T}, j::Int, s::Bool, p::Real) where {T}
     Γ_a = cov_mtx(a)
     n = size(Γ_a, 1) ÷ 2
     Γ_p = zeros(T, size(Γ_a))
-    Γ_p[2*j, 2*j-1] = (-one(T))^s
-    for ll in 1:n-1, kk in (ll+1):n
-        (kk,ll) == (2*j,2*j-1) && continue
-        Γ_p[kk,ll] = Γ_a[kk,ll] - (-one(T))^s / (2*p) * (Γ_a[2*j-1,ll] * Γ_a[2*j,kk] - Γ_a[2*j-1,kk] * Γ_a[2*j,ll])
+    Γ_p[2 * j, 2 * j - 1] = (-one(T))^s
+    for ll in 1:(n - 1), kk in (ll + 1):n
+        (kk, ll) == (2 * j, 2 * j - 1) && continue
+        Γ_p[kk, ll] =
+            Γ_a[kk, ll] -
+            (-one(T))^s / (2 * p) *
+            (Γ_a[2 * j - 1, ll] * Γ_a[2 * j, kk] - Γ_a[2 * j - 1, kk] * Γ_a[2 * j, ll])
     end
     Γ_p = Γ_p .- transpose(Γ_p)
     y = findsupport(Γ_p)
@@ -258,7 +262,14 @@ function postmeasure(a::GaussianState{T}, j::Int, s::Bool, p::Real) where {T}
     Γ_1 = cov_mtx(ref_state(a))
     Γ_2 = cov_mtx(y)
     u = r'
-    v = exp(im*ν)
+    v = exp(im * ν)
     w = overlaptriple(Γ_0, Γ_1, Γ_2, α, u, v)
-    return GaussianState(Γ_p, y, w/sqrt(p))
+    return GaussianState(Γ_p, y, w / sqrt(p))
+end
+
+function samplestate(y::BitVector, p::AbstractVector{T}) where {T}
+    n = length(p)
+    R_π = sparse(p, collect(1:n), ones(T, n))
+    Γ = R_π * cov_mtx(y) * R_π'
+    return describe(Γ)
 end

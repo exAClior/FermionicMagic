@@ -1,5 +1,32 @@
 using Test, FermionicMagic, LinearAlgebra
 
+function rand_On_mtx(n) 
+    Q,_ = qr(rand(2*n,2*n))
+    return Matrix(Q)
+end
+
+function rand_cov_mtx(n)
+    x = Diagonal(rand([-im,im],2*n))
+    Q = rand_On_mtx(n)
+    return Q*x*Q'
+end
+@testset "utils here" begin
+    n = 10
+    x = rand_cov_mtx(n)
+    @test isapprox(x,-x', atol=1e-10)
+    @test x * x' ≈ I(2*n) 
+end
+
+@testset "Gaussian State" begin
+
+
+    vac_state = G"01"
+
+    @test cov_mtx(vac_state) ≈ Float64[0 1 0 0; -1 0 0 0; 0 0 0 -1; 0 0 1 0]
+    @test ref_state(vac_state) == [false,true]
+    @test overlap(vac_state) == 1.0 + 0.0im
+end
+
 @testset "Direct Sum" begin
     A = rand(2,2)
     B = rand(2,2)
@@ -8,11 +35,6 @@ using Test, FermionicMagic, LinearAlgebra
     @test all([res[2*(ii-1)+1:2*(ii-1)+2, 2*(ii-1)+1:2*(ii-1)+2] ≈ as[ii]  for ii in eachindex(as)])
 
 
-    vac_state = G"01"
-
-    @test vac_state.Γ ≈ Float64[0 1 0 0; -1 0 0 0; 0 0 0 -1; 0 0 1 0]
-    @test vac_state.x == [false,true]
-    @test vac_state.r == 1.0 + 0.0im
 
     @test_throws ErrorException vac_state = G"21" # should throw an error
 
