@@ -22,18 +22,15 @@ end
 
 function GaussianState(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
     # TODO: check if Γ is a valid covariance matrix for pure gaussian state
-    # TODO: check why are some pfaffian of cov_mtx + Γ zero
     n = size(Γ, 1) ÷ 2
     x = findsupport(Γ)
     σ = pfaffian(Γ)
-    @show σ, pfaffian(cov_mtx(x))
     r = Complex{T}(sqrt(σ * pfaffian(cov_mtx(x) .+ Γ) / 2.0^n))
     return GaussianState(Γ, x, r)
 end
 
 ref_state(a::GaussianState{T}) where {T} = a.ref_state
 overlap(a::GaussianState{T}) where {T} = a.overlap
-
 cov_mtx(a::GaussianState{T}) where {T} = a.Γ
 
 function cov_mtx(::Type{T}, x::BitVector) where {T<:AbstractFloat}
@@ -117,6 +114,20 @@ end
 
 relatebasiselements(x::BitVector, y::BitVector) = relatebasiselements(Float64, x, y)
 
+function J_x(T, α::BitVector)
+    mag_α = count(α)
+    n = length(α)
+    J_α = zeros(T, mag_α, n)
+    jj = 0
+    for ii in 1:n
+        if α[ii]
+            jj += 1
+            J_α[jj, ii] = one(T)
+        end
+    end
+    return J_α
+end
+
 function overlaptriple(
     Γ0::AbstractMatrix{T},
     Γ1::AbstractMatrix{T},
@@ -125,34 +136,30 @@ function overlaptriple(
     u::Complex{T},
     v::Complex{T},
 ) where {T<:AbstractFloat}
-    @show pfaffian(Γ0), pfaffian(Γ1), pfaffian(Γ2)
     parity = pfaffian(Γ0)
     (parity == pfaffian(Γ1) == pfaffian(Γ2)) ||
         throw(ArgumentError("Γ0, Γ1, and Γ2 should have the same Pfaffian"))
     !iszero(u) || throw(ArgumentError("u should be non-zero"))
     !iszero(v) || throw(ArgumentError("v should be non-zero"))
 
-    n = size(Γ0, 1) ÷ 2
     mag_α = count(α)
+    iseven(mag_α) || throw(ArgumentError("The number of creation operators should be even"))
+
+    n = size(Γ0, 1) ÷ 2
 
     D_α = Diagonal([α[i] ? zero(T) : one(T) for i in 1:(2 * n)])
-    J_α = zeros(mag_α, 2 * n)
-    jj = 0
-    for ii in 1:(2 * n)
-        if α[ii]
-            jj += 1
-            J_α[jj, ii] = one(T)
-        end
-    end
+    J_α = J_x(Complex{T}, α)
+
     # TODO: need to verify this part mathematically
     R_α = zeros(Complex{T}, 6 * n + mag_α, 6 * n + mag_α)
     R_α[1:(2 * n), 1:(2 * n)] = im .* Γ0
     R_α[1:(2 * n), (2 * n + 1):(4 * n)] = -one(T) * I(2 * n)
+    R_α[1:(2 * n), (4 * n + 1):(6 * n)] = one(T) * I(2 * n)
     R_α[(2 * n + 1):(4 * n), 1:(2 * n)] = one(T) * I(2 * n)
     R_α[(2 * n + 1):(4 * n), (2 * n + 1):(4 * n)] = im .* Γ1
     R_α[(2 * n + 1):(4 * n), (4 * n + 1):(6 * n)] = -one(T) * I(2 * n)
     R_α[(4 * n + 1):(6 * n), 1:(2 * n)] = -one(T) * I(2 * n)
-    R_α[(4 * n + 1):(6 * n), (2 * n + 1):(4n)] = one(T) * I(2 * n)
+    R_α[(4 * n + 1):(6 * n), (2 * n + 1):(4 * n)] = one(T) * I(2 * n)
     R_α[(4 * n + 1):(6 * n), (4 * n + 1):(6 * n)] = im .* D_α * Γ2 * D_α
     R_α[(4 * n + 1):(6 * n), (6 * n + 1):(6 * n + mag_α)] =
         transpose(J_α) .+ im .* D_α * Γ2 * transpose(J_α)

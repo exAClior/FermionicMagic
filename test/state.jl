@@ -1,6 +1,48 @@
 using Test, FermionicMagic, LinearAlgebra
-using FermionicMagic: rand_cov_mtx, pfaffian
+using FermionicMagic: rand_cov_mtx, pfaffian, J_x
 using Random
+
+@testset "Overlap triple" begin
+    n = 3
+    α = BitVector([true, false, true])
+    J_α = J_x(ComplexF64,α)
+    @test J_α == ComplexF64[1.0 0.0 0.0; 0.0 0.0 1.0]
+
+    bit_str = rand(Bool,n)
+    x0 = BitVector(bit_str)
+    α = BitVector(fill(false,2*n))
+    Ψ0 = GaussianState(cov_mtx(x0))
+    Ψ1 = GaussianState(cov_mtx(x0))
+    Ψ2 = GaussianState(cov_mtx(x0))
+    @test overlaptriple(cov_mtx(Ψ0),cov_mtx(Ψ1),cov_mtx(Ψ2),α,ComplexF64(1.0),ComplexF64(1.0)) ≈ ComplexF64(1.0)
+end
+
+@testset "Gaussian State" begin
+    Random.seed!(1234)
+    n = 5
+    rand_bits = BitVector(rand(Bool,n))
+    Γ = directsum([x ? Float64[0 -1; 1 0] : Float64[0 1; -1 0] for x in rand_bits])
+
+    ψ_num = GaussianState(Γ)
+
+    @test ref_state(ψ_num) == rand_bits
+    @test abs(overlap(ψ_num)) ≈ 1.0
+
+    n = 5
+    Γ = rand_cov_mtx(n)
+    ψ = GaussianState(Γ)
+
+    @test abs(overlap(ψ))^2 >= 2.0^(-n)
+    @test isapprox(abs(overlap(ψ))^4, det(cov_mtx(ref_state(ψ)) .+ cov_mtx(ψ)) / 2^(2*n),atol=1e-10)
+
+    vac_state = G"01"
+
+    @test cov_mtx(vac_state) ≈ Float64[0 1 0 0; -1 0 0 0; 0 0 0 -1; 0 0 1 0]
+    @test ref_state(vac_state) == [false,true]
+    @test overlap(vac_state) == 1.0 + 0.0im
+
+    @test_throws ErrorException vac_state = G"21" # should throw an error
+end
 
 @testset "Find support" begin
     n = 3
@@ -26,37 +68,6 @@ using Random
     @test sign(pfaffian(Γ_p)) == sign(pfaffian(cov_mtx(x)))
 end
 
-
-@testset "Gaussian State" begin
-    Random.seed!(1234)
-    n = 5
-    rand_bits = BitVector(rand(Bool,n))
-    Γ = directsum([x ? Float64[0 -1; 1 0] : Float64[0 1; -1 0] for x in rand_bits])
-
-    ψ_num = GaussianState(Γ)
-
-    @test ref_state(ψ_num) == rand_bits
-    @test abs(overlap(ψ_num)) ≈ 1.0
-
-    Random.seed!(1234)
-    n = 5
-    Γ = rand_cov_mtx(n)
-    ψ = GaussianState(Γ)
-
-    @show abs(overlap(ψ))^2 , overlap(ψ)
-    @test abs(overlap(ψ))^2 >= 2.0^(-n)
-    @test isapprox(abs(overlap(ψ))^4, det(cov_mtx(ref_state(ψ)) .+ cov_mtx(ψ)) / 2^(2*n),atol=1e-10)
-
-    vac_state = G"01"
-
-    @test cov_mtx(vac_state) ≈ Float64[0 1 0 0; -1 0 0 0; 0 0 0 -1; 0 0 1 0]
-    @test ref_state(vac_state) == [false,true]
-    @test overlap(vac_state) == 1.0 + 0.0im
-
-    @test_throws ErrorException vac_state = G"21" # should throw an error
-end
-
-
 @testset "relatebasiselements" begin
     x = BitArray([true]) 
     y = BitArray([false]) 
@@ -68,22 +79,4 @@ end
     x = BitArray([true, false, true])
     y = BitArray([false, true, true])
     @test relatebasiselements(x,y) == (BitArray([true, false, true, false, false, false]), π*3/2)
-end
-
-@testset "Overlap triple" begin
-   # TODO: need to implement 
-end
-
-@testset "Convert" begin
-    n = 5
-    rand_bits1 = BitVector(rand(Bool,n))
-    Γ = FermionicMagic.cov_mtx(rand_bits1)
-    Q,_ = qr(rand(2*n,2*n))
-    Γ = Q*Γ*Q'
-
-    # support_bits = findsupport(Γ)
-
-    # d = GaussianState(Γ, support_bits,)
-    # d_c = FermionicMagic.convert(d, rand_bits1)
-    # @test FermionicMagic.convert(d, rand_bits1) == GaussianState(Γ, rand_bits1, Complex(prob_amp1))
 end
