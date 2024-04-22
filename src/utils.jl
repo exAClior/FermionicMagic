@@ -21,11 +21,14 @@ function reflection(n, i)
 end
 
 
-function rand_cov_mtx(n)
+function rand_cov_mtx(n;preserve_parity::Bool=true)
     bits = BitVector(fill(false,n))
     x = cov_mtx(bits)
     angles = rand(n*(2*n-1)).*(2*π)
     R = givens_product(n, angles)
+    if !preserve_parity 
+        R = R * reflection(n,1)
+    end
     return R * x * transpose(R)
 end
 

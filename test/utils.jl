@@ -16,10 +16,15 @@ using FermionicMagic: rand_cov_mtx, pfaffian, rand_Orth_mtx, givens_product, ref
     @test det(R) ≈ 1.0
 
 
-    x = rand_cov_mtx(n)
+    x = rand_cov_mtx(n,preserve_parity=false)
     @test isapprox(x,-transpose(x), atol=1e-14)
     @test x * transpose(x) ≈ I(2*n) 
-    @test det(x) ≈ one(eltype(x)) 
+    @test pfaffian(x) ≈ - one(eltype(x)) 
+
+    x = rand_cov_mtx(n,preserve_parity=true)
+    @test isapprox(x,-transpose(x), atol=1e-14)
+    @test x * transpose(x) ≈ I(2*n) 
+    @test pfaffian(x) ≈ one(eltype(x)) 
 
 end
 

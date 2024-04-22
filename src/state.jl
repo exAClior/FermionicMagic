@@ -80,18 +80,20 @@ function findsupport(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
         # change to most probable state probability
         p_jj = res[jj] ? (1 - p_jj) : p_jj
         prob *= p_jj
-        Γ_nxt = zeros(T, 2 * n, 2 * n)
-        Γ_nxt[2 * jj, 2 * jj - 1] = -(-1)^res[jj]
-        Γ_nxt[2 * jj-1, 2 * jj] = (-1)^res[jj]
+        Γ_nxt = copy(Γ)
+        # Γ_nxt = zeros(T, 2 * n, 2 * n)
 
-        for ll in 1:(2 * n - 1), kk in (ll + 1):(2 * n)
-            (kk == 2 * jj && ll == 2 * jj - 1) && continue
-            Γ_nxt[kk, ll] =
-                Γ[kk, ll] -
-                (-1)^res[jj] / (2 * p_jj) *
-                (Γ[2 * jj - 1, ll] * Γ[2 * jj, kk] - Γ[2 * jj - 1, kk] * Γ[2 * jj, ll])
+        function comp_Γ_nxt(Γ,j,p,q,p_j,s_j) 
+            return Γ[p,q] - (-1)^s_j * (Γ[2*j,p] * Γ[2*j+1,q] - Γ[2*j,q] * Γ[2*j+1,p] ) / 2 / p_j  
         end
-        Γ = Γ_nxt .- transpose(Γ_nxt)
+
+        for qq in (2*jj+2):2*n
+            Γ_nxt[1,qq] = comp_Γ_nxt(Γ,jj,1,qq,p_jj,res[jj])
+        end
+        for pp in (2*jj+2):2*n, qq in (pp+1):2*n
+            Γ_nxt[pp,qq] = comp_Γ_nxt(Γ,jj,pp,qq,p_jj,res[jj])
+        end
+        Γ = Γ_nxt 
     end
     @show prob
     return res

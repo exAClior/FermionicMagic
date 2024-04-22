@@ -2,6 +2,32 @@ using Test, FermionicMagic, LinearAlgebra
 using FermionicMagic: rand_cov_mtx, pfaffian
 using Random
 
+@testset "Find support" begin
+    n = 5
+
+    rand_bits = BitVector(rand(Bool,n))
+    Γ = directsum([x ? Float64[0 -1; 1 0] : Float64[0 1; -1 0] for x in rand_bits])
+
+    @test (pfaffian(Γ) > 0) == iseven(count(rand_bits))
+    @test findsupport(Γ) == rand_bits 
+
+    rand_bits1 = BitVector(rand(Bool,n))
+    rand_bits2 = BitVector(rand(Bool,n))
+    Γ = FermionicMagic.cov_mtx(rand_bits1)./√3 .+ FermionicMagic.cov_mtx(rand_bits2).*(√2/√3)
+
+    @test (pfaffian(Γ) > 0) == iseven(count(rand_bits2))
+    @test findsupport(Γ) == rand_bits2
+
+    for i in 1:100
+    @show i
+    Γ_rnd = rand_cov_mtx(n)
+    x = findsupport(Γ_rnd) 
+    @show pfaffian(Γ_rnd), pfaffian(cov_mtx(x)), pfaffian(cov_mtx(x) + Γ_rnd)
+    @test sign(pfaffian(Γ_rnd)) == sign(pfaffian(cov_mtx(x)))
+    end
+end
+
+
 @testset "Gaussian State" begin
     Random.seed!(1234)
     n = 5
@@ -29,30 +55,6 @@ using Random
     @test overlap(vac_state) == 1.0 + 0.0im
 
     @test_throws ErrorException vac_state = G"21" # should throw an error
-end
-
-@testset "Find support" begin
-    n = 5
-
-    rand_bits = BitVector(rand(Bool,n))
-    Γ = directsum([x ? Float64[0 -1; 1 0] : Float64[0 1; -1 0] for x in rand_bits])
-
-    @test (pfaffian(Γ) > 0) == iseven(count(rand_bits))
-    @test findsupport(Γ) == rand_bits 
-
-    rand_bits1 = BitVector(rand(Bool,n))
-    rand_bits2 = BitVector(rand(Bool,n))
-    Γ = FermionicMagic.cov_mtx(rand_bits1)./√3 .+ FermionicMagic.cov_mtx(rand_bits2).*(√2/√3)
-
-    @test (pfaffian(Γ) > 0) == iseven(count(rand_bits2))
-    @test findsupport(Γ) == rand_bits2
-
-    pfaffian(cov_mtx(BitVector([true ,false])))
-    pfaffian(cov_mtx(BitVector([false, true])))
-    Γ_rnd = rand_cov_mtx(n)
-    x = findsupport(Γ_rnd) 
-    @show pfaffian(Γ_rnd), pfaffian(cov_mtx(x))
-    @test sign(pfaffian(Γ_rnd)) == sign(pfaffian(cov_mtx(x)))
 end
 
 
