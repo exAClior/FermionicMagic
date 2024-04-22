@@ -42,8 +42,6 @@ end
 
 cov_mtx(x::BitVector) = cov_mtx(Float64, x)
 
-
-
 # create a Fock basis state in GaussianState notation
 macro G_str(a)
     quote
@@ -56,6 +54,10 @@ macro G_str(a)
     end
 end
 
+function comp_Γ_nxt_diff(Γ, j, p, q, p_j, s_j)
+    return (-1)^s_j * (Γ[2 * j - 1, q] * Γ[2 * j, p] - Γ[2 * j - 1, p] * Γ[2 * j, q]) / 2 /
+           p_j
+end
 
 """
     findsupport(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
@@ -72,30 +74,25 @@ function findsupport(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
     Γ = copy(Γ)
     n = size(Γ, 1) ÷ 2
     res = BitVector(undef, n)
-    prob = one(T) 
+    prob = one(T)
     for jj in 1:n
-        # probability of measuring the jj-th fermion in the |0⟩ state
         p_jj = 0.5 * (1 + Γ[2 * jj - 1, 2 * jj])
         res[jj] = p_jj < 0.5
         # change to most probable state probability
         p_jj = res[jj] ? (1 - p_jj) : p_jj
         prob *= p_jj
         Γ_nxt = copy(Γ)
-        # Γ_nxt = zeros(T, 2 * n, 2 * n)
 
-        function comp_Γ_nxt(Γ,j,p,q,p_j,s_j) 
-            return Γ[p,q] - (-1)^s_j * (Γ[2*j,p] * Γ[2*j+1,q] - Γ[2*j,q] * Γ[2*j+1,p] ) / 2 / p_j  
+        Γ_nxt[2 * jj, 2 * jj - 1] = -(-1)^res[jj]
+        Γ_nxt[2 * jj - 1, 2 * jj] = (-1)^res[jj]
+
+        for pp in (2 * jj + 1):(2 * n), qq in (pp + 1):(2 * n)
+            Γ_nxt[pp, qq] += comp_Γ_nxt_diff(Γ_nxt, jj, pp, qq, p_jj, res[jj])
+            Γ_nxt[qq, pp] = -Γ_nxt[pp, qq]
         end
 
-        for qq in (2*jj+2):2*n
-            Γ_nxt[1,qq] = comp_Γ_nxt(Γ,jj,1,qq,p_jj,res[jj])
-        end
-        for pp in (2*jj+2):2*n, qq in (pp+1):2*n
-            Γ_nxt[pp,qq] = comp_Γ_nxt(Γ,jj,pp,qq,p_jj,res[jj])
-        end
-        Γ = Γ_nxt 
+        Γ = Γ_nxt
     end
-    @show prob
     return res
 end
 
@@ -238,7 +235,9 @@ function rot_fock_basis(R::AbstractMatrix{T}, x::BitVector) where {T}
 end
 
 # j: fermion index , s:: fermion occupation 
-measureprob(a::GaussianState{T}, j::Int, s::Bool) where {T} = (1 + (-1)^s * cov_mtx(a)[2 * j - 1, 2 * j]) / 2
+function measureprob(a::GaussianState{T}, j::Int, s::Bool) where {T}
+    return (1 + (-1)^s * cov_mtx(a)[2 * j - 1, 2 * j]) / 2
+end
 
 function postmeasure(a::GaussianState{T}, j::Int, s::Bool, p::Real) where {T}
     Γ_a = cov_mtx(a)

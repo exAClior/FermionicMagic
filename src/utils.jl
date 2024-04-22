@@ -4,30 +4,29 @@ function rand_Orth_mtx(n)
 end
 
 function givens_product(n, angles)
-    R = Diagonal(ones(2*n))
-    orders = [CartesianIndex(jj,ii) for ii in 1:2*n  for jj in 1:(ii-1) ]
+    R = Diagonal(ones(2 * n))
+    orders = [CartesianIndex(jj, ii) for ii in 1:(2 * n) for jj in 1:(ii - 1)]
     for ii in eachindex(angles)
-        i,j = orders[ii].I
-        G = LinearAlgebra.Givens(i,j,cos(angles[ii]),sin(angles[ii]))
+        i, j = orders[ii].I
+        G = LinearAlgebra.Givens(i, j, cos(angles[ii]), sin(angles[ii]))
         R = R * G
     end
     return R
 end
 
 function reflection(n, i)
-    R = -Diagonal(ones(2*n))
-    R[i,i] = 1.0
+    R = -Diagonal(ones(2 * n))
+    R[i, i] = 1.0
     return R
 end
 
-
-function rand_cov_mtx(n;preserve_parity::Bool=true)
-    bits = BitVector(fill(false,n))
+function rand_cov_mtx(n; preserve_parity::Bool=true)
+    bits = BitVector(fill(false, n))
     x = cov_mtx(bits)
-    angles = rand(n*(2*n-1)).*(2*π)
+    angles = rand(n * (2 * n - 1)) .* (2 * π)
     R = givens_product(n, angles)
-    if !preserve_parity 
-        R = R * reflection(n,1)
+    if !preserve_parity
+        R = R * reflection(n, 1)
     end
     return R * x * transpose(R)
 end
@@ -130,8 +129,6 @@ function pfaffian(A::AbstractMatrix{T}; overwrite_a=false) where {T<:Number}
 
     return pfaffian_val
 end
-
-
 
 # function rand_SOn(n)
 #     nothing

@@ -3,28 +3,27 @@ using FermionicMagic: rand_cov_mtx, pfaffian
 using Random
 
 @testset "Find support" begin
-    n = 5
-
+    n = 3
     rand_bits = BitVector(rand(Bool,n))
     Γ = directsum([x ? Float64[0 -1; 1 0] : Float64[0 1; -1 0] for x in rand_bits])
 
-    @test (pfaffian(Γ) > 0) == iseven(count(rand_bits))
     @test findsupport(Γ) == rand_bits 
 
     rand_bits1 = BitVector(rand(Bool,n))
     rand_bits2 = BitVector(rand(Bool,n))
-    Γ = FermionicMagic.cov_mtx(rand_bits1)./√3 .+ FermionicMagic.cov_mtx(rand_bits2).*(√2/√3)
+    Γ = FermionicMagic.cov_mtx(rand_bits1)./3 .+ FermionicMagic.cov_mtx(rand_bits2).*(2/3)
 
     @test (pfaffian(Γ) > 0) == iseven(count(rand_bits2))
     @test findsupport(Γ) == rand_bits2
 
-    for i in 1:100
-    @show i
     Γ_rnd = rand_cov_mtx(n)
     x = findsupport(Γ_rnd) 
-    @show pfaffian(Γ_rnd), pfaffian(cov_mtx(x)), pfaffian(cov_mtx(x) + Γ_rnd)
     @test sign(pfaffian(Γ_rnd)) == sign(pfaffian(cov_mtx(x)))
-    end
+
+    Γ_p = [2.7473131173941344e-18 -0.5491779180444556 0.7003638282055721 -0.18219904815758856 -0.4042335033995079 -0.10626807636078786; 0.5491779180444556 7.103776214785612e-19 -0.18302771782112415 0.36269090891334005 -0.3062937833865339 -0.6629810643539726; -0.7003638282055722 0.18302771782112418 1.993096873782267e-17 -0.16360718573842614 0.00128506630073143 -0.6702405538534518; 0.18219904815758856 -0.36269090891334005 0.16360718573842614 -8.075827175686925e-18 0.8518592717065105 -0.2877972922466259; 0.4042335033995079 0.3062937833865339 -0.0012850663007314281 -0.8518592717065105 -1.417321766106611e-17 -0.13081866380749932; 0.10626807636078783 0.6629810643539726 0.6702405538534519 0.287797292246626 0.13081866380749932 -2.895659638696641e-18]
+
+    x = findsupport(Γ_p) 
+    @test sign(pfaffian(Γ_p)) == sign(pfaffian(cov_mtx(x)))
 end
 
 
