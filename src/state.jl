@@ -73,21 +73,13 @@ function findsupport(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
     res = BitVector(undef, n)
     prob = one(T)
     for jj in 1:n
-        p_jj = 0.5 * (1 + Γ[2 * jj - 1, 2 * jj])
+        p_jj = measureprob(Γ, jj, false)
         res[jj] = p_jj < 0.5
         # change to most probable state probability
         p_jj = res[jj] ? (1 - p_jj) : p_jj
         prob *= p_jj
         Γ_nxt = copy(Γ)
-
-        Γ_nxt[2 * jj, 2 * jj - 1] = -(-1)^res[jj]
-        Γ_nxt[2 * jj - 1, 2 * jj] = (-1)^res[jj]
-
-        for pp in (2 * jj + 1):(2 * n), qq in (pp + 1):(2 * n)
-            Γ_nxt[pp, qq] += comp_Γ_nxt_diff(Γ_nxt, jj, pp, qq, p_jj, res[jj])
-            Γ_nxt[qq, pp] = -Γ_nxt[pp, qq]
-        end
-
+        Γ_nxt = postmeasure!(Γ_nxt, jj, res[jj], p_jj)
         Γ = Γ_nxt
     end
     return res
@@ -136,9 +128,15 @@ function overlaptriple(
     u::Complex{T},
     v::Complex{T},
 ) where {T<:AbstractFloat}
-    parity = pfaffian(Γ0)
-    (parity == pfaffian(Γ1) == pfaffian(Γ2)) ||
-        throw(ArgumentError("Γ0, Γ1, and Γ2 should have the same Pfaffian"))
+    parity0 = pfaffian(Γ0)
+    parity1 = pfaffian(Γ1)
+    parity2 = pfaffian(Γ2)
+
+    (parity0 ≈ parity1 ≈ parity2) || throw(
+        ArgumentError(
+            "Γ0, Γ1, and Γ2 should have the same Pfaffian, got $parity0, $parity1, and $parity2",
+        ),
+    )
     !iszero(u) || throw(ArgumentError("u should be non-zero"))
     !iszero(v) || throw(ArgumentError("v should be non-zero"))
 
@@ -167,10 +165,7 @@ function overlaptriple(
     R_α[(6 * n + 1):(6 * n + mag_α), (6 * n + 1):(6 * n + mag_α)] =
         im .* J_α * Γ2 * transpose(J_α)
 
-    @show findall(x -> !isapprox(abs(x), 0.0), R_α .+ transpose(R_α))
-    @show size(R_α), n, mag_α
-
-    return parity * im^(n + mag_α * (mag_α - 1) / 2) * pfaffian(R_α) / u / v / 4^(n)
+    return parity0 * im^(n + mag_α * (mag_α - 1) / 2) * pfaffian(R_α) / u / v / 4^(n)
 end
 
 function convert(d::GaussianState{T}, y::BitVector) where {T}
@@ -243,28 +238,38 @@ end
 
 # j: fermion index , s:: fermion occupation 
 function measureprob(a::GaussianState{T}, j::Int, s::Bool) where {T}
-    return (1 + (-1)^s * cov_mtx(a)[2 * j - 1, 2 * j]) / 2
+    return measureprob(cov_mtx(a), j, s)
+end
+function measureprob(Γ::AbstractMatrix{T}, j::Int, s::Bool) where {T}
+    return (1 + (-1)^s * Γ[2 * j - 1, 2 * j]) / 2
+end
+
+function postmeasure!(Γ::AbstractMatrix{T}, jj::Int, s::Bool, p_jj::Real) where {T}
+    n = size(Γ, 1) ÷ 2
+
+    Γ[2 * jj, 2 * jj - 1] = -(-1)^s
+    Γ[2 * jj - 1, 2 * jj] = (-1)^s
+    for qq in (2*jj +1):(2*n)
+        Γ[1, qq] += comp_Γ_nxt_diff(Γ, jj, 1, qq, p_jj, s)
+        Γ[qq, 1] = -Γ[1, qq]
+    end
+    for pp in (2 * jj + 1):(2 * n), qq in (pp + 1):(2 * n)
+        Γ[pp, qq] += comp_Γ_nxt_diff(Γ, jj, pp, qq, p_jj, s)
+        Γ[qq, pp] = -Γ[pp, qq]
+    end
+
+    display(round.(Γ, digits=10))
+    return Γ
 end
 
 function postmeasure(a::GaussianState{T}, j::Int, s::Bool, p::Real) where {T}
-    Γ_a = cov_mtx(a)
-    n = size(Γ_a, 1) ÷ 2
-    Γ_p = zeros(T, size(Γ_a))
-    Γ_p[2 * j, 2 * j - 1] = (-one(T))^s
-    for ll in 1:(n - 1), kk in (ll + 1):n
-        (kk, ll) == (2 * j, 2 * j - 1) && continue
-        Γ_p[kk, ll] =
-            Γ_a[kk, ll] -
-            (-one(T))^s / (2 * p) *
-            (Γ_a[2 * j - 1, ll] * Γ_a[2 * j, kk] - Γ_a[2 * j - 1, kk] * Γ_a[2 * j, ll])
-    end
-    Γ_p = Γ_p .- transpose(Γ_p)
+    Γ_0 = cov_mtx(a)
+    Γ_p = postmeasure!(copy(Γ_0), j, s, p)
     y = findsupport(Γ_p)
     α, ν = relatebasiselements(y, ref_state(a))
-    Γ_0 = Γ_a
     Γ_1 = cov_mtx(ref_state(a))
     Γ_2 = cov_mtx(y)
-    u = r'
+    u = overlap(a)'
     v = exp(im * ν)
     w = overlaptriple(Γ_0, Γ_1, Γ_2, α, u, v)
     return GaussianState(Γ_p, y, w / sqrt(p))

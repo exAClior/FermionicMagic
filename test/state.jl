@@ -1,6 +1,66 @@
 using Test, FermionicMagic, LinearAlgebra
-using FermionicMagic: rand_cov_mtx, pfaffian, J_x
+using FermionicMagic: rand_cov_mtx, pfaffian, J_x, reflection, givens_product
 using Random
+
+
+@testset "measure" begin
+    n = 5
+    x = BitVector(rand(Bool,n))
+    Γ = cov_mtx(x)
+    ψ = GaussianState(Γ)
+    for ii in 1:n
+        @test measureprob(ψ,ii,x[ii]) ≈ 1.0
+    end
+
+    Γ = rand_cov_mtx(n)
+    ψ = GaussianState(Γ)
+    x = ref_state(ψ)
+    Γ_post = cov_mtx(x)
+    ψ_fin = GaussianState(Γ)
+    for ii in 1:n
+        p_ii = measureprob(ψ_fin,ii,x[ii])
+        ψ_fin = postmeasure(ψ_fin,ii,x[ii],p_ii)
+    end
+
+    @test isapprox(cov_mtx(ψ_fin),Γ_post,atol=1e-14)
+end
+
+@testset "Evolve" begin
+    n = 5
+    Γ = cov_mtx(BitVector(fill(false,n)))
+    ψ = GaussianState(Γ)
+    angle = rand() .* 2* π
+    ii,jj = shuffle(1:2*n)[1:2]
+    R =  LinearAlgebra.Givens(ii,jj,cos(angle),sin(angle)) * Diagonal(ones(2*n))
+    ψ2 = evolve(R, ψ)
+    @test cov_mtx(ψ2) ≈ R * Γ * transpose(R)
+    @test abs(overlap(ψ2))^2 >= 1.0/2^n
+end
+
+@testset "Two state overlap" begin
+    n = 5
+    Γ = rand_cov_mtx(n)
+    ψ = GaussianState(Γ)
+    
+    @test abs(overlap(ψ,ψ)) ≈ 1.0
+
+    Γ_op = reflection(n, 1) * Γ * transpose(reflection(n,1))
+    ψ2 = GaussianState(Γ_op)
+
+    @test_throws ArgumentError abs(overlap(ψ,ψ2)) 
+end
+
+@testset "Convert" begin
+    # TODO: add test
+    # n = 5
+    # x = BitVector(rand(Bool,n))
+    # y = shuffle(x)
+    # @show x,y
+    # Γ = 0.7 .* cov_mtx(x) .+ 0.3 .* cov_mtx(y)
+    # ψ = GaussianState(Γ)
+    # overlap(ψ)
+
+end
 
 @testset "Overlap triple" begin
     n = 3
