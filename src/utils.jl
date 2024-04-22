@@ -3,11 +3,51 @@ function rand_Orth_mtx(n)
     return Matrix(Q)
 end
 
+function givens_product(n, angles)
+    R = Diagonal(ones(2*n))
+    orders = [CartesianIndex(jj,ii) for ii in 1:2*n  for jj in 1:(ii-1) ]
+    for ii in eachindex(angles)
+        i,j = orders[ii].I
+        G = LinearAlgebra.Givens(i,j,cos(angles[ii]),sin(angles[ii]))
+        R = R * G
+    end
+    return R
+end
+
+function reflection(n, i)
+    R = -Diagonal(ones(2*n))
+    R[i,i] = 1.0
+    return R
+end
+
+
 function rand_cov_mtx(n)
-    bits = BitVector(rand(Bool, n))
+    bits = BitVector(fill(false,n))
     x = cov_mtx(bits)
-    Q = rand_Orth_mtx(2 * n)
-    return Q * x * Q'
+    angles = rand(n*(2*n-1)).*(2*π)
+    R = givens_product(n, angles)
+    return R * x * transpose(R)
+end
+
+# same functionality could be found in BlockDiagonals
+function directsum(as::AbstractVector{MT}) where {T<:Number,MT<:AbstractMatrix{T}}
+    r_dim = mapreduce(x -> size(x, 1), +, as)
+    c_dim = mapreduce(x -> size(x, 2), +, as)
+
+    n_rows = size.(as, 1)
+    n_cols = size.(as, 2)
+
+    cum_rows = cumsum(n_rows) .- n_rows .+ 1
+    cum_cols = cumsum(n_cols) .- n_cols .+ 1
+
+    res = zeros(T, r_dim, c_dim)
+
+    for ii in eachindex(as)
+        block_rows = cum_rows[ii]:(cum_rows[ii] + n_rows[ii] - 1)
+        block_cols = cum_cols[ii]:(cum_cols[ii] + n_cols[ii] - 1)
+        res[block_rows, block_cols] .= as[ii]
+    end
+    return res
 end
 
 # https://arxiv.org/pdf/1102.3440.pdf
@@ -88,10 +128,6 @@ function pfaffian(A::AbstractMatrix{T}; overwrite_a=false) where {T<:Number}
     return pfaffian_val
 end
 
-function cov_mtx(::Type{T}, x::BitVector) where {T<:AbstractFloat}
-    return directsum([xi ? T[0 -1; 1 0] : T[0 1; -1 0] for xi in x])
-end
-cov_mtx(x::BitVector) = cov_mtx(Float64, x)
 
 
 # function rand_SOn(n)

@@ -4,4 +4,6 @@ using Test
 @testset "FermionicMagic.jl" begin
     # Write your tests here.
     include("state.jl")
+    include("utils.jl")
 end
+

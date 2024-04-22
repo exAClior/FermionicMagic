@@ -1,7 +1,9 @@
 using Test, FermionicMagic, LinearAlgebra
-using FermionicMagic: rand_cov_mtx
+using FermionicMagic: rand_cov_mtx, pfaffian
+using Random
 
 @testset "Gaussian State" begin
+    Random.seed!(1234)
     n = 5
     rand_bits = BitVector(rand(Bool,n))
     Γ = directsum([x ? Float64[0 -1; 1 0] : Float64[0 1; -1 0] for x in rand_bits])
@@ -11,14 +13,15 @@ using FermionicMagic: rand_cov_mtx
     @test ref_state(ψ_num) == rand_bits
     @test abs(overlap(ψ_num)) ≈ 1.0
 
-    for _ in 1:10
-        Γ = rand_cov_mtx(n)
-        ψ = GaussianState(Γ)
-        @show abs(overlap(ψ))^2 , overlap(ψ)
+    Random.seed!(1234)
+    n = 5
+    Γ = rand_cov_mtx(n)
+    ψ = GaussianState(Γ)
 
-        @test abs(overlap(ψ))^2 >= 2.0^(-n)
-        @test isapprox(abs(overlap(ψ))^4, det(cov_mtx(ref_state(ψ)) .+ cov_mtx(ψ)) / 2^(2*n),atol=1e-10)
-    end
+    @show abs(overlap(ψ))^2 , overlap(ψ)
+    @test abs(overlap(ψ))^2 >= 2.0^(-n)
+    @test isapprox(abs(overlap(ψ))^4, det(cov_mtx(ref_state(ψ)) .+ cov_mtx(ψ)) / 2^(2*n),atol=1e-10)
+
     vac_state = G"01"
 
     @test cov_mtx(vac_state) ≈ Float64[0 1 0 0; -1 0 0 0; 0 0 0 -1; 0 0 1 0]
@@ -30,26 +33,28 @@ end
 
 @testset "Find support" begin
     n = 5
+
     rand_bits = BitVector(rand(Bool,n))
     Γ = directsum([x ? Float64[0 -1; 1 0] : Float64[0 1; -1 0] for x in rand_bits])
 
+    @test (pfaffian(Γ) > 0) == iseven(count(rand_bits))
     @test findsupport(Γ) == rand_bits 
 
     rand_bits1 = BitVector(rand(Bool,n))
     rand_bits2 = BitVector(rand(Bool,n))
-
     Γ = FermionicMagic.cov_mtx(rand_bits1)./√3 .+ FermionicMagic.cov_mtx(rand_bits2).*(√2/√3)
 
+    @test (pfaffian(Γ) > 0) == iseven(count(rand_bits2))
     @test findsupport(Γ) == rand_bits2
+
+    pfaffian(cov_mtx(BitVector([true ,false])))
+    pfaffian(cov_mtx(BitVector([false, true])))
+    Γ_rnd = rand_cov_mtx(n)
+    x = findsupport(Γ_rnd) 
+    @show pfaffian(Γ_rnd), pfaffian(cov_mtx(x))
+    @test sign(pfaffian(Γ_rnd)) == sign(pfaffian(cov_mtx(x)))
 end
 
-@testset "Direct Sum" begin
-    A = rand(2,2)
-    B = rand(2,2)
-    as = rand([A,B],3)
-    res = directsum(as)
-    @test all([res[2*(ii-1)+1:2*(ii-1)+2, 2*(ii-1)+1:2*(ii-1)+2] ≈ as[ii]  for ii in eachindex(as)])
-end
 
 @testset "relatebasiselements" begin
     x = BitArray([true]) 

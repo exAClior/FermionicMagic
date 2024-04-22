@@ -22,9 +22,11 @@ end
 
 function GaussianState(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
     # TODO: check if Γ is a valid covariance matrix for pure gaussian state
+    # TODO: check why are some pfaffian of cov_mtx + Γ zero
     n = size(Γ, 1) ÷ 2
     x = findsupport(Γ)
     σ = pfaffian(Γ)
+    @show σ, pfaffian(cov_mtx(x))
     r = Complex{T}(sqrt(σ * pfaffian(cov_mtx(x) .+ Γ) / 2.0^n))
     return GaussianState(Γ, x, r)
 end
@@ -33,6 +35,14 @@ ref_state(a::GaussianState{T}) where {T} = a.ref_state
 overlap(a::GaussianState{T}) where {T} = a.overlap
 
 cov_mtx(a::GaussianState{T}) where {T} = a.Γ
+
+function cov_mtx(::Type{T}, x::BitVector) where {T<:AbstractFloat}
+    return directsum([xi ? T[0 -1; 1 0] : T[0 1; -1 0] for xi in x])
+end
+
+cov_mtx(x::BitVector) = cov_mtx(Float64, x)
+
+
 
 # create a Fock basis state in GaussianState notation
 macro G_str(a)
@@ -46,44 +56,33 @@ macro G_str(a)
     end
 end
 
-# same functionality could be found in BlockDiagonals
-function directsum(as::AbstractVector{MT}) where {T<:Number,MT<:AbstractMatrix{T}}
-    r_dim = mapreduce(x -> size(x, 1), +, as)
-    c_dim = mapreduce(x -> size(x, 2), +, as)
 
-    n_rows = size.(as, 1)
-    n_cols = size.(as, 2)
+"""
+    findsupport(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
 
-    cum_rows = cumsum(n_rows) .- n_rows .+ 1
-    cum_cols = cumsum(n_cols) .- n_cols .+ 1
+Given a matrix Γ representing a fermionic state ψ, this function finds the number state with greatest overlap with ψ.
 
-    res = zeros(T, r_dim, c_dim)
+# Arguments
+- `Γ::AbstractMatrix{T}`: The matrix representing the fermionic state.
 
-    for ii in eachindex(as)
-        block_rows = cum_rows[ii]:(cum_rows[ii] + n_rows[ii] - 1)
-        block_cols = cum_cols[ii]:(cum_cols[ii] + n_cols[ii] - 1)
-        res[block_rows, block_cols] .= as[ii]
-    end
-    return res
-end
-
-# find the Fock basis state with largest overlap with Gaussian state
-# represented by covariance matrix Γ
+# Returns
+- `res::BitVector`: The support of the number state, where `res[jj]` is `true` if the jj-th fermion is in the |0⟩ state, and `false` otherwise.
+"""
 function findsupport(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
     Γ = copy(Γ)
     n = size(Γ, 1) ÷ 2
     res = BitVector(undef, n)
     prob = one(T) 
-
     for jj in 1:n
-        # probability of measuring the jj-th fermion in the |0> state
+        # probability of measuring the jj-th fermion in the |0⟩ state
         p_jj = 0.5 * (1 + Γ[2 * jj - 1, 2 * jj])
         res[jj] = p_jj < 0.5
         # change to most probable state probability
-        p_jj = p_jj < 0.5 ? (1 - p_jj) : p_jj
+        p_jj = res[jj] ? (1 - p_jj) : p_jj
         prob *= p_jj
         Γ_nxt = zeros(T, 2 * n, 2 * n)
-        Γ_nxt[2 * jj, 2 * jj - 1] = (-1)^res[jj]
+        Γ_nxt[2 * jj, 2 * jj - 1] = -(-1)^res[jj]
+        Γ_nxt[2 * jj-1, 2 * jj] = (-1)^res[jj]
 
         for ll in 1:(2 * n - 1), kk in (ll + 1):(2 * n)
             (kk == 2 * jj && ll == 2 * jj - 1) && continue
@@ -92,8 +91,9 @@ function findsupport(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
                 (-1)^res[jj] / (2 * p_jj) *
                 (Γ[2 * jj - 1, ll] * Γ[2 * jj, kk] - Γ[2 * jj - 1, kk] * Γ[2 * jj, ll])
         end
-        Γ = Γ_nxt - transpose(Γ_nxt)
+        Γ = Γ_nxt .- transpose(Γ_nxt)
     end
+    @show prob
     return res
 end
 
@@ -236,9 +236,7 @@ function rot_fock_basis(R::AbstractMatrix{T}, x::BitVector) where {T}
 end
 
 # j: fermion index , s:: fermion occupation 
-function measureprob(a::GaussianState{T}, j::Int, s::Bool) where {T}
-    return (1 + (-1)^s * cov_mtx(a)[2 * j - 1, 2 * j]) / 2
-end
+measureprob(a::GaussianState{T}, j::Int, s::Bool) where {T} = (1 + (-1)^s * cov_mtx(a)[2 * j - 1, 2 * j]) / 2
 
 function postmeasure(a::GaussianState{T}, j::Int, s::Bool, p::Real) where {T}
     Γ_a = cov_mtx(a)
