@@ -4,13 +4,7 @@ using Random
 
 
 @testset "measure" begin
-    n = 5
-    x = BitVector(rand(Bool,n))
-    Γ = cov_mtx(x)
-    ψ = GaussianState(Γ)
-    for ii in 1:n
-        @test measureprob(ψ,ii,x[ii]) ≈ 1.0
-    end
+    n = 3
 
     Γ = rand_cov_mtx(n)
     ψ = GaussianState(Γ)
@@ -18,11 +12,21 @@ using Random
     Γ_post = cov_mtx(x)
     ψ_fin = GaussianState(Γ)
     for ii in 1:n
+        @show ii
         p_ii = measureprob(ψ_fin,ii,x[ii])
+        @show p_ii
         ψ_fin = postmeasure(ψ_fin,ii,x[ii],p_ii)
     end
 
     @test isapprox(cov_mtx(ψ_fin),Γ_post,atol=1e-14)
+
+    x = BitVector(rand(Bool,n))
+    Γ = cov_mtx(x)
+    ψ = GaussianState(Γ)
+    for ii in 1:n
+        @test measureprob(ψ,ii,x[ii]) ≈ 1.0
+    end
+
 end
 
 @testset "Evolve" begin

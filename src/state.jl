@@ -247,24 +247,39 @@ end
 function postmeasure!(Γ::AbstractMatrix{T}, jj::Int, s::Bool, p_jj::Real) where {T}
     n = size(Γ, 1) ÷ 2
 
-    Γ[2 * jj, 2 * jj - 1] = -(-1)^s
+
+    # need to derive Wick's formula for computing the density matrix after measurement
+
+    # Γ[2 * jj - 1, 2 * jj] = (-1)^s
+    # Γ[2 * jj, 2 * jj - 1] = -(-1)^s
+
+    # Γ[2*jj-1:2*jj,2*jj+1:end] = zeros(T,2,2*n-2*jj)
+    # Γ[2*jj+1:end,2*jj-1:2*jj] = zeros(T,2*n-2*jj,2)
+
+    # for pp in (2*jj+1):2*n , qq in (pp+1):2*n
+    #     Γ[pp, qq] = Γ[pp,qq]/p_jj + comp_Γ_nxt_diff(Γ, jj, pp, qq, p_jj, s)
+    #     Γ[qq, pp] = -Γ[pp, qq]
+    # end
+
     Γ[2 * jj - 1, 2 * jj] = (-1)^s
-    for qq in (2*jj +1):(2*n)
-        Γ[1, qq] += comp_Γ_nxt_diff(Γ, jj, 1, qq, p_jj, s)
-        Γ[qq, 1] = -Γ[1, qq]
-    end
+    Γ[2 * jj, 2 * jj - 1] = -(-1)^s
+
     for pp in (2 * jj + 1):(2 * n), qq in (pp + 1):(2 * n)
         Γ[pp, qq] += comp_Γ_nxt_diff(Γ, jj, pp, qq, p_jj, s)
         Γ[qq, pp] = -Γ[pp, qq]
     end
 
-    display(round.(Γ, digits=10))
     return Γ
 end
 
 function postmeasure(a::GaussianState{T}, j::Int, s::Bool, p::Real) where {T}
     Γ_0 = cov_mtx(a)
     Γ_p = postmeasure!(copy(Γ_0), j, s, p)
+    @show pfaffian(Γ_0) , pfaffian(Γ_p) 
+    display(round.(Γ_0,digits=5))
+    display(round.(Γ_p,digits=5))
+    @assert pfaffian(Γ_0) ≈ pfaffian(Γ_p)
+
     y = findsupport(Γ_p)
     α, ν = relatebasiselements(y, ref_state(a))
     Γ_1 = cov_mtx(ref_state(a))
