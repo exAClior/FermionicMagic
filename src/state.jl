@@ -244,30 +244,39 @@ function measureprob(Γ::AbstractMatrix{T}, j::Int, s::Bool) where {T}
     return (1 + (-1)^s * Γ[2 * j - 1, 2 * j]) / 2
 end
 
+sub_pfaffian(Γ,a,b,c,d) = Γ[a,b] * Γ[c,d] - Γ[a,c] * Γ[b,d] + Γ[b,c] * Γ[a,d]
+
 function postmeasure!(Γ::AbstractMatrix{T}, jj::Int, s::Bool, p_jj::Real) where {T}
     n = size(Γ, 1) ÷ 2
 
+    Γ_nxt = zeros(T, 2 * n, 2 * n)
+    Γ_nxt[2*jj-1,2*jj] = ((-1)^s + Γ[2*jj-1,2*jj])/(2*p_jj)
+    # Γ_nxt[2*jj-1,2*jj+1:end] .= zero(T)
 
-    # need to derive Wick's formula for computing the density matrix after measurement
+    for pp in 1:(2*jj-3), qq in (pp+1):(2*jj-2)
+        Γ_nxt[pp,qq] = Γ[pp,qq] / (2*p_jj) + (-1)^s/(2*p_jj) * sub_pfaffian(Γ,pp,qq,2*jj-1,2*jj)
+    end
 
-    # Γ[2 * jj - 1, 2 * jj] = (-1)^s
-    # Γ[2 * jj, 2 * jj - 1] = -(-1)^s
-
-    # Γ[2*jj-1:2*jj,2*jj+1:end] = zeros(T,2,2*n-2*jj)
-    # Γ[2*jj+1:end,2*jj-1:2*jj] = zeros(T,2*n-2*jj,2)
-
-    # for pp in (2*jj+1):2*n , qq in (pp+1):2*n
-    #     Γ[pp, qq] = Γ[pp,qq]/p_jj + comp_Γ_nxt_diff(Γ, jj, pp, qq, p_jj, s)
-    #     Γ[qq, pp] = -Γ[pp, qq]
+    # for pp in 1:(2*jj-2)
+    #     Γ_nxt[pp,2*jj-1] = zero(T) 
+    #     Γ_nxt[pp,2*jj] = zero(T)
     # end
 
-    Γ[2 * jj - 1, 2 * jj] = (-1)^s
-    Γ[2 * jj, 2 * jj - 1] = -(-1)^s
-
-    for pp in (2 * jj + 1):(2 * n), qq in (pp + 1):(2 * n)
-        Γ[pp, qq] += comp_Γ_nxt_diff(Γ, jj, pp, qq, p_jj, s)
-        Γ[qq, pp] = -Γ[pp, qq]
+    for pp in 1:(2*jj-2), qq in (2*jj+1):(2*n)
+        Γ_nxt[pp,qq] = Γ[pp,qq]/(2*p_jj) + (-1)^s/(2*p_jj) * sub_pfaffian(Γ,pp,2*jj-1,2*jj,qq)
     end
+
+    # for qq in (2*jj+1):(2*n)
+    #     Γ_nxt[2*jj,qq] = zero(T)
+    # end
+
+    for pp in (2*jj+1):(2*n), qq in (pp+1):(2*n)
+        Γ_nxt[pp,qq] = Γ[pp,qq]/(2*p_jj) + (-1)^s/(2*p_jj) * sub_pfaffian(Γ,2*jj-1,2*jj,pp,qq)
+    end
+
+    Γ_nxt = Γ_nxt - transpose(Γ_nxt)
+
+    Γ = Γ_nxt
 
     return Γ
 end
@@ -275,10 +284,6 @@ end
 function postmeasure(a::GaussianState{T}, j::Int, s::Bool, p::Real) where {T}
     Γ_0 = cov_mtx(a)
     Γ_p = postmeasure!(copy(Γ_0), j, s, p)
-    @show pfaffian(Γ_0) , pfaffian(Γ_p) 
-    display(round.(Γ_0,digits=5))
-    display(round.(Γ_p,digits=5))
-    @assert pfaffian(Γ_0) ≈ pfaffian(Γ_p)
 
     y = findsupport(Γ_p)
     α, ν = relatebasiselements(y, ref_state(a))
