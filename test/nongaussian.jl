@@ -1,6 +1,10 @@
 using Test, FermionicMagic, LinearAlgebra
 using Random
 
+@testset "Χmeasureprob" begin
+    #TODO
+end
+
 @testset "Mixed Gaussian State and Naive Norm" begin
     n = 5
     Χ = 10

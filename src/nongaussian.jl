@@ -7,7 +7,9 @@ function Χevolve(R::AbstractMatrix{T}, Χ::GaussianMixture{T}) where T
 end
 
 function Χmeasureprob(Χ::GaussianMixture{T}, j::Int, s::Bool) where T
-    return sum(c * measureprob(ψ, j, s) for (c, ψ) in Χ.states)
+    new_weights = [c * measureprob(ψ, j, s) for (c, ψ) in Χ.states] 
+    new_state = GaussianMixture([(c, ψ) for (c, postmeasure(ψ,j,s)) in zip(new_weights, Χ.states)])
+    return Χ_norm(new_state), new_state 
 end
 
 # naive Χ norm
