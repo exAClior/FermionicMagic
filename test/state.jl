@@ -4,7 +4,7 @@ using Random
 
 
 @testset "measure" begin
-    n = 3
+    n = 10 
 
     Γ = rand_cov_mtx(n)
     ψ = GaussianState(Γ)

@@ -20,10 +20,13 @@ function reflection(n, i)
     return R
 end
 
-function rand_cov_mtx(n; preserve_parity::Bool=true)
+rand_cov_mtx(n; preserve_parity::Bool=true) = rand_cov_mtx(Float64, n;preserve_parity)
+
+
+function rand_cov_mtx(::Type{T},n; preserve_parity::Bool=true) where {T}
     bits = BitVector(fill(false, n))
     x = cov_mtx(bits)
-    angles = rand(n * (2 * n - 1)) .* (2 * π)
+    angles = rand(T,n * (2 * n - 1)) .* (2 * π)
     R = givens_product(n, angles)
     if !preserve_parity
         R = R * reflection(n, 1)

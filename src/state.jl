@@ -148,7 +148,6 @@ function overlaptriple(
     D_α = Diagonal([α[i] ? zero(T) : one(T) for i in 1:(2 * n)])
     J_α = J_x(Complex{T}, α)
 
-    # TODO: need to verify this part mathematically
     R_α = zeros(Complex{T}, 6 * n + mag_α, 6 * n + mag_α)
     R_α[1:(2 * n), 1:(2 * n)] = im .* Γ0
     R_α[1:(2 * n), (2 * n + 1):(4 * n)] = -one(T) * I(2 * n)
@@ -182,8 +181,11 @@ end
 
 function overlap(d1::GaussianState{T}, d2::GaussianState{T}) where {T}
     σ1, σ2 = pfaffian(cov_mtx(d1)), pfaffian(cov_mtx(d2))
-    isapprox(σ1, σ2; atol=1e-10) ||
-        throw(ArgumentError("The Pfaffians of the covariance matrices should be the same"))
+    if !isapprox(σ1, σ2; atol=1e-10)
+        @debug "The Pfaffians of the covariance matrices should be the same, now $σ1 and $σ2"
+        return zero(T)
+    end
+    
     α, ν = relatebasiselements(ref_state(d2), ref_state(d1))
     Γ0_p = cov_mtx(d1)
     Γ1_p = cov_mtx(ref_state(d1))
