@@ -3,13 +3,12 @@ function rand_Orth_mtx(n)
     return Matrix(Q)
 end
 
-function givens_product(n, angles)
-    R = Diagonal(ones(2 * n))
-    orders = [CartesianIndex(jj, ii) for ii in 1:(2 * n) for jj in 1:(ii - 1)]
+function givens_product(n::Int, angles::VT) where {T<:Real,VT<:AbstractVector{T}}
+    R = Matrix{T}(I, 2 * n, 2 * n)
+    orders = [CartesianIndex(jj, ii) for ii in 1:(2*n) for jj in 1:(ii-1)]
     for ii in eachindex(angles)
         i, j = orders[ii].I
-        G = LinearAlgebra.Givens(i, j, cos(angles[ii]), sin(angles[ii]))
-        R = R * G
+        R *= LinearAlgebra.Givens(i, j, cos(angles[ii]), sin(angles[ii]))
     end
     return R
 end
@@ -20,13 +19,13 @@ function reflection(n, i)
     return R
 end
 
-rand_cov_mtx(n; preserve_parity::Bool=true) = rand_cov_mtx(Float64, n;preserve_parity)
+rand_cov_mtx(n; preserve_parity::Bool=true) = rand_cov_mtx(Float64, n; preserve_parity)
 
 
-function rand_cov_mtx(::Type{T},n; preserve_parity::Bool=true) where {T}
+function rand_cov_mtx(::Type{T}, n; preserve_parity::Bool=true) where {T}
     bits = BitVector(fill(false, n))
     x = cov_mtx(bits)
-    angles = rand(T,n * (2 * n - 1)) .* (2 * π)
+    angles = rand(T, n * (2 * n - 1)) .* (2 * π)
     R = givens_product(n, angles)
     if !preserve_parity
         R = R * reflection(n, 1)
@@ -48,8 +47,8 @@ function directsum(as::AbstractVector{MT}) where {T<:Number,MT<:AbstractMatrix{T
     res = zeros(T, r_dim, c_dim)
 
     for ii in eachindex(as)
-        block_rows = cum_rows[ii]:(cum_rows[ii] + n_rows[ii] - 1)
-        block_cols = cum_cols[ii]:(cum_cols[ii] + n_cols[ii] - 1)
+        block_rows = cum_rows[ii]:(cum_rows[ii]+n_rows[ii]-1)
+        block_cols = cum_cols[ii]:(cum_cols[ii]+n_cols[ii]-1)
         res[block_rows, block_cols] .= as[ii]
     end
     return res
@@ -82,25 +81,25 @@ function pfaffian(A::AbstractMatrix{T}; overwrite_a=false) where {T<:Number}
 
     pfaffian_val = one(T)
 
-    @inbounds for k in 1:2:(n - 1)
+    @inbounds for k in 1:2:(n-1)
         tau0 = @view tau[k:end]
 
         # First, find the largest entry in A[k+1:end, k] and permute it to A[k+1, k]
-        @views kp = k + findmax(abs.(A[(k + 1):end, k]))[2]
+        @views kp = k + findmax(abs.(A[(k+1):end, k]))[2]
 
         # Check if we need to pivot
         if kp != k + 1
             # Interchange rows k+1 and kp
             @inbounds @simd for l in k:n
-                t = A[k + 1, l]
-                A[k + 1, l] = A[kp, l]
+                t = A[k+1, l]
+                A[k+1, l] = A[kp, l]
                 A[kp, l] = t
             end
 
             # Then interchange columns k+1 and kp
             @inbounds @simd for l in k:n
-                t = A[l, k + 1]
-                A[l, k + 1] = A[l, kp]
+                t = A[l, k+1]
+                A[l, k+1] = A[l, kp]
                 A[l, kp] = t
             end
 
@@ -109,18 +108,18 @@ function pfaffian(A::AbstractMatrix{T}; overwrite_a=false) where {T<:Number}
         end
 
         # Now form the Gauss vector
-        @inbounds if A[k + 1, k] != zero(T)
-            @inbounds @views tau0 .= A[k, (k + 2):end] ./ A[k, k + 1]
+        @inbounds if A[k+1, k] != zero(T)
+            @inbounds @views tau0 .= A[k, (k+2):end] ./ A[k, k+1]
 
-            pfaffian_val *= @inbounds A[k, k + 1]
+            pfaffian_val *= @inbounds A[k, k+1]
 
             if k + 2 <= n
                 # Update the matrix block A[k+2:end, k+2:end]
                 @inbounds for l1 in eachindex(tau0)
                     @simd for l2 in eachindex(tau0)
-                        @fastmath A[k + 1 + l2, k + 1 + l1] +=
-                            tau0[l2] * A[k + 1 + l1, k + 1] -
-                            tau0[l1] * A[k + 1 + l2, k + 1]
+                        @fastmath A[k+1+l2, k+1+l1] +=
+                            tau0[l2] * A[k+1+l1, k+1] -
+                            tau0[l1] * A[k+1+l2, k+1]
                     end
                 end
             end
@@ -132,7 +131,3 @@ function pfaffian(A::AbstractMatrix{T}; overwrite_a=false) where {T<:Number}
 
     return pfaffian_val
 end
-
-# function rand_SOn(n)
-#     nothing
-# end
