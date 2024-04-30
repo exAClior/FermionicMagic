@@ -52,7 +52,7 @@ macro G_str(a)
 end
 
 function comp_Γ_nxt_diff(Γ, j, p, q, p_j, s_j)
-    return (-1)^s_j * (Γ[2 * j - 1, q] * Γ[2 * j, p] - Γ[2 * j - 1, p] * Γ[2 * j, q]) / 2 /
+    return (-1)^s_j * (Γ[2*j-1, q] * Γ[2*j, p] - Γ[2*j-1, p] * Γ[2*j, q]) / 2 /
            p_j
 end
 
@@ -89,7 +89,7 @@ function relatebasiselements(::Type{T}, x::BitVector, y::BitVector) where {T<:Ab
     length(x) == length(y) || throw(ArgumentError("x and y should have the same length"))
     N = length(x)
     α = BitVector([
-        isodd(i) ? (x[i ÷ 2 + 1] ⊻ y[i ÷ 2 + 1]) : zero(eltype(x)) for i in 1:(2 * N)
+        isodd(i) ? (x[i÷2+1] ⊻ y[i÷2+1]) : zero(eltype(x)) for i in 1:(2*N)
     ])
     ν = zero(T)
     η_j = zero(T)
@@ -145,23 +145,23 @@ function overlaptriple(
 
     n = size(Γ0, 1) ÷ 2
 
-    D_α = Diagonal([α[i] ? zero(T) : one(T) for i in 1:(2 * n)])
+    D_α = Diagonal([α[i] ? zero(T) : one(T) for i in 1:(2*n)])
     J_α = J_x(Complex{T}, α)
 
     R_α = zeros(Complex{T}, 6 * n + mag_α, 6 * n + mag_α)
-    R_α[1:(2 * n), 1:(2 * n)] = im .* Γ0
-    R_α[1:(2 * n), (2 * n + 1):(4 * n)] = -one(T) * I(2 * n)
-    R_α[1:(2 * n), (4 * n + 1):(6 * n)] = one(T) * I(2 * n)
-    R_α[(2 * n + 1):(4 * n), 1:(2 * n)] = one(T) * I(2 * n)
-    R_α[(2 * n + 1):(4 * n), (2 * n + 1):(4 * n)] = im .* Γ1
-    R_α[(2 * n + 1):(4 * n), (4 * n + 1):(6 * n)] = -one(T) * I(2 * n)
-    R_α[(4 * n + 1):(6 * n), 1:(2 * n)] = -one(T) * I(2 * n)
-    R_α[(4 * n + 1):(6 * n), (2 * n + 1):(4 * n)] = one(T) * I(2 * n)
-    R_α[(4 * n + 1):(6 * n), (4 * n + 1):(6 * n)] = im .* D_α * Γ2 * D_α
-    R_α[(4 * n + 1):(6 * n), (6 * n + 1):(6 * n + mag_α)] =
+    R_α[1:(2*n), 1:(2*n)] = im .* Γ0
+    R_α[1:(2*n), (2*n+1):(4*n)] = -one(T) * I(2 * n)
+    R_α[1:(2*n), (4*n+1):(6*n)] = one(T) * I(2 * n)
+    R_α[(2*n+1):(4*n), 1:(2*n)] = one(T) * I(2 * n)
+    R_α[(2*n+1):(4*n), (2*n+1):(4*n)] = im .* Γ1
+    R_α[(2*n+1):(4*n), (4*n+1):(6*n)] = -one(T) * I(2 * n)
+    R_α[(4*n+1):(6*n), 1:(2*n)] = -one(T) * I(2 * n)
+    R_α[(4*n+1):(6*n), (2*n+1):(4*n)] = one(T) * I(2 * n)
+    R_α[(4*n+1):(6*n), (4*n+1):(6*n)] = im .* D_α * Γ2 * D_α
+    R_α[(4*n+1):(6*n), (6*n+1):(6*n+mag_α)] =
         transpose(J_α) .+ im .* D_α * Γ2 * transpose(J_α)
-    R_α[(6 * n + 1):(6 * n + mag_α), (4 * n + 1):(6 * n)] = -J_α .+ im .* J_α * Γ2 * D_α
-    R_α[(6 * n + 1):(6 * n + mag_α), (6 * n + 1):(6 * n + mag_α)] =
+    R_α[(6*n+1):(6*n+mag_α), (4*n+1):(6*n)] = -J_α .+ im .* J_α * Γ2 * D_α
+    R_α[(6*n+1):(6*n+mag_α), (6*n+1):(6*n+mag_α)] =
         im .* J_α * Γ2 * transpose(J_α)
 
     return parity0 * im^(n + mag_α * (mag_α - 1) / 2) * pfaffian(R_α) / u / v / 4^(n)
@@ -185,7 +185,7 @@ function overlap(d1::GaussianState{T}, d2::GaussianState{T}) where {T}
         @debug "The Pfaffians of the covariance matrices should be the same, now $σ1 and $σ2"
         return zero(T)
     end
-    
+
     α, ν = relatebasiselements(ref_state(d2), ref_state(d1))
     Γ0_p = cov_mtx(d1)
     Γ1_p = cov_mtx(ref_state(d1))
@@ -212,12 +212,12 @@ function evolve(R::AbstractMatrix{T}, a::GaussianState{T}) where {T}
     return GaussianState(Γ0, y, w)
 end
 
-β_k(x::BitVector, k::Int) = count(x[1:(k - 1)]) + (x[k] - 1 / 2) * (k + 1)
+β_k(x::BitVector, k::Int) = count(x[1:(k-1)]) + (x[k] - 1 / 2) * (k + 1)
 
 function rot_fock_basis(R::AbstractMatrix{T}, x::BitVector) where {T}
     if isapprox(det(R), one(T))
         j = findfirst(x -> !isone(x), diag(R))
-        k = findfirst(x -> !iszero(x), R[(j + 1):end, j])
+        k = findfirst(x -> !iszero(x), R[(j+1):end, j])
         ν = atan(R[k, j] / R[j, j])
         if cos(ν / 2)^2 >= 1 / 2
             z = x
@@ -243,20 +243,20 @@ function measureprob(a::GaussianState{T}, j::Int, s::Bool) where {T}
     return measureprob(cov_mtx(a), j, s)
 end
 function measureprob(Γ::AbstractMatrix{T}, j::Int, s::Bool) where {T}
-    return (1 + (-1)^s * Γ[2 * j - 1, 2 * j]) / 2
+    return (1 + (-1)^s * Γ[2*j-1, 2*j]) / 2
 end
 
-sub_pfaffian(Γ,a,b,c,d) = Γ[a,b] * Γ[c,d] - Γ[a,c] * Γ[b,d] + Γ[b,c] * Γ[a,d]
+sub_pfaffian(Γ, a, b, c, d) = Γ[a, b] * Γ[c, d] - Γ[a, c] * Γ[b, d] + Γ[b, c] * Γ[a, d]
 
 function postmeasure!(Γ::AbstractMatrix{T}, jj::Int, s::Bool, p_jj::Real) where {T}
     n = size(Γ, 1) ÷ 2
 
     Γ_nxt = zeros(T, 2 * n, 2 * n)
-    Γ_nxt[2*jj-1,2*jj] = ((-1)^s + Γ[2*jj-1,2*jj])/(2*p_jj)
+    Γ_nxt[2*jj-1, 2*jj] = ((-1)^s + Γ[2*jj-1, 2*jj]) / (2 * p_jj)
     # Γ_nxt[2*jj-1,2*jj+1:end] .= zero(T)
 
     for pp in 1:(2*jj-3), qq in (pp+1):(2*jj-2)
-        Γ_nxt[pp,qq] = Γ[pp,qq] / (2*p_jj) + (-1)^s/(2*p_jj) * sub_pfaffian(Γ,pp,qq,2*jj-1,2*jj)
+        Γ_nxt[pp, qq] = Γ[pp, qq] / (2 * p_jj) + (-1)^s / (2 * p_jj) * sub_pfaffian(Γ, pp, qq, 2 * jj - 1, 2 * jj)
     end
 
     # for pp in 1:(2*jj-2)
@@ -265,7 +265,7 @@ function postmeasure!(Γ::AbstractMatrix{T}, jj::Int, s::Bool, p_jj::Real) where
     # end
 
     for pp in 1:(2*jj-2), qq in (2*jj+1):(2*n)
-        Γ_nxt[pp,qq] = Γ[pp,qq]/(2*p_jj) + (-1)^s/(2*p_jj) * sub_pfaffian(Γ,pp,2*jj-1,2*jj,qq)
+        Γ_nxt[pp, qq] = Γ[pp, qq] / (2 * p_jj) + (-1)^s / (2 * p_jj) * sub_pfaffian(Γ, pp, 2 * jj - 1, 2 * jj, qq)
     end
 
     # for qq in (2*jj+1):(2*n)
@@ -273,7 +273,7 @@ function postmeasure!(Γ::AbstractMatrix{T}, jj::Int, s::Bool, p_jj::Real) where
     # end
 
     for pp in (2*jj+1):(2*n), qq in (pp+1):(2*n)
-        Γ_nxt[pp,qq] = Γ[pp,qq]/(2*p_jj) + (-1)^s/(2*p_jj) * sub_pfaffian(Γ,2*jj-1,2*jj,pp,qq)
+        Γ_nxt[pp, qq] = Γ[pp, qq] / (2 * p_jj) + (-1)^s / (2 * p_jj) * sub_pfaffian(Γ, 2 * jj - 1, 2 * jj, pp, qq)
     end
 
     Γ_nxt = Γ_nxt - transpose(Γ_nxt)
