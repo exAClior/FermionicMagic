@@ -91,19 +91,21 @@ function relatebasiselements(::Type{T}, x::BitVector, y::BitVector) where {T<:Ab
     α = BitVector([
         isodd(i) ? (x[i÷2+1] ⊻ y[i÷2+1]) : zero(eltype(x)) for i in 1:(2*N)
     ])
+
     ν = zero(T)
     η_j = zero(T)
     # α0 + α^†0 don't contribute to the overlap
+    # order does matter, don't use simd
     @inbounds for j in 2:N
-        η_j += x[j] ? one(T) : zero(T)
-        ν += x[j] ⊻ y[j] ? one(T) : zero(T)
+        η_j += x[j-1] ? one(T) : zero(T)
+        ν += (x[j] ⊻ y[j] ? one(T) : zero(T)) * η_j
     end
+
     ν *= π
     x_y_mod = count(x .⊻ y)
     ν += π / 4 * x_y_mod * (x_y_mod - 1)
-    return (α, ν)
+    return (α, ν % (2 * π))
 end
-
 relatebasiselements(x::BitVector, y::BitVector) = relatebasiselements(Float64, x, y)
 
 function J_x(T, α::BitVector)

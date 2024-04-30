@@ -1,6 +1,6 @@
-using Test, FermionicMagic, LinearAlgebra
-using FermionicMagic: rand_cov_mtx, pfaffian, J_x, reflection, givens_product
-using Random
+using Test, FermionicMagic, LinearAlgebra, Random
+using FermionicMagic: rand_cov_mtx, pfaffian, J_x, reflection
+using BenchmarkTools, Profile
 
 
 @testset "measure" begin
