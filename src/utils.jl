@@ -1,37 +1,24 @@
-function rand_Orth_mtx(n)
-    Q, _ = qr(rand(n, n))
-    return Matrix(Q)
+function rand_Orth_mtx(::Type{T}, n) where {T}
+    Q, R = qr(randn(T, n, n))
+    return Matrix{T}(Q * Diagonal(sign.(diag(R))))
 end
 
-function givens_product(n::Int, angles::VT) where {T<:Real,VT<:AbstractVector{T}}
-    R = Matrix{T}(I, 2 * n, 2 * n)
-    orders = [CartesianIndex(jj, ii) for ii in 1:(2*n) for jj in 1:(ii-1)]
-    for ii in eachindex(angles)
-        i, j = orders[ii].I
-        R *= LinearAlgebra.Givens(i, j, cos(angles[ii]), sin(angles[ii]))
-    end
-    return R
-end
+rand_Orth_mtx(n) = rand_Orth_mtx(Float64, n)
 
-function reflection(n, i)
-    R = -Diagonal(ones(2 * n))
-    R[i, i] = 1.0
-    return R
-end
-
-rand_cov_mtx(n; preserve_parity::Bool=true) = rand_cov_mtx(Float64, n; preserve_parity)
+reflection(::Type{T}, n::Int, i::Int) where {T} = Diagonal([ii == i ? one(T) : -one(T) for ii in 1:2*n])
+reflection(n::Int, i::Int) = reflection(Float64, n, i)
 
 
-function rand_cov_mtx(::Type{T}, n; preserve_parity::Bool=true) where {T}
-    bits = BitVector(fill(false, n))
-    x = cov_mtx(bits)
-    angles = rand(T, n * (2 * n - 1)) .* (2 * π)
-    R = givens_product(n, angles)
-    if !preserve_parity
-        R = R * reflection(n, 1)
+function rand_cov_mtx(::Type{T}, n; even_parity::Bool=true) where {T}
+    x = cov_mtx(BitVector(fill(false, n)))
+    R = rand_Orth_mtx(T, 2 * n)
+    if xor(even_parity, sign(det(R)) > zero(T))
+        R *= reflection(T, n, 1)
     end
     return R * x * transpose(R)
 end
+
+rand_cov_mtx(n; even_parity::Bool=true) = rand_cov_mtx(Float64, n; even_parity)
 
 # same functionality could be found in BlockDiagonals
 function directsum(as::AbstractVector{MT}) where {T<:Number,MT<:AbstractMatrix{T}}
@@ -63,12 +50,8 @@ function pfaffian(A::AbstractMatrix{T}; overwrite_a=false) where {T<:Number}
     # Check if it's skew-symmetric
     @assert maximum(abs.(A .+ transpose(A))) < 1e-14
 
-    n, m = size(A)
-    # if !(eltype(A) <: Complex)
-    #     A = convert(Array{Float64,2}, A)
-    # end
+    n, _ = size(A)
 
-    # Quick return if possible
     if n % 2 == 1
         return zero(T)
     end

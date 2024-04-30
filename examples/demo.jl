@@ -9,6 +9,8 @@ using FermionicMagic: rand_cov_mtx
 # State Creation API
 ## Number States
 ψ = G"001101"
+@show ψ
+display(ψ)
 
 ## Random Gaussian State
 n = 20
@@ -46,6 +48,7 @@ for ii in 1:n
     p_ii = measureprob(ψ_fin, ii, x[ii])
     ψ_fin = postmeasure(ψ_fin, ii, x[ii], p_ii)
 end
+
 
 @test isapprox(cov_mtx(ψ_fin), Γ_post, atol=1e-14)
 
