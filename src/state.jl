@@ -78,9 +78,7 @@ function findsupport(Γ::AbstractMatrix{T}) where {T<:AbstractFloat}
         # change to most probable state probability
         p_jj = res[jj] ? (1 - p_jj) : p_jj
         prob *= p_jj
-        Γ_nxt = copy(Γ)
-        Γ_nxt = postmeasure!(Γ_nxt, jj, res[jj], p_jj)
-        Γ = Γ_nxt
+        Γ = postmeasure!(Γ, jj, res[jj], p_jj)
     end
     return res
 end
@@ -108,12 +106,13 @@ function relatebasiselements(::Type{T}, x::BitVector, y::BitVector) where {T<:Ab
 end
 relatebasiselements(x::BitVector, y::BitVector) = relatebasiselements(Float64, x, y)
 
-function J_x(T, α::BitVector)
+function J_x(::Type{T}, α::BitVector) where {T}
     mag_α = count(α)
     n = length(α)
     J_α = zeros(T, mag_α, n)
+    iis, jjs, vals = Int[], Int[], T[]
     jj = 0
-    for ii in 1:n
+    @inbounds for ii in 1:n
         if α[ii]
             jj += 1
             J_α[jj, ii] = one(T)
@@ -134,11 +133,15 @@ function overlaptriple(
     parity1 = pfaffian(Γ1)
     parity2 = pfaffian(Γ2)
 
-    (parity0 ≈ parity1 ≈ parity2) || throw(
-        ArgumentError(
-            "Γ0, Γ1, and Γ2 should have the same Pfaffian, got $parity0, $parity1, and $parity2",
-        ),
-    )
+    if !(parity0 ≈ parity1 ≈ parity2)
+        throw(
+            Warning(
+                "Γ0, Γ1, and Γ2 should have the same Pfaffian, got $parity0, $parity1, and $parity2",
+            ),
+        )
+        return zero(Complex{T})
+    end
+
     !iszero(u) || throw(ArgumentError("u should be non-zero"))
     !iszero(v) || throw(ArgumentError("v should be non-zero"))
 

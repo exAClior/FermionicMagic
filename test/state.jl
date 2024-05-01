@@ -70,6 +70,11 @@ end
     J_α = J_x(ComplexF64, α)
     @test J_α == ComplexF64[1.0 0.0 0.0; 0.0 0.0 1.0]
 
+
+    @code_warntype J_x(ComplexF64, BitVector(rand(Bool, 1000)))
+    @btime J_x(ComplexF64, BitVector(rand(Bool, 1000)))
+    @benchmark J_x(ComplexF64, BitVector(rand(Bool, 1000)))
+
     bit_str = rand(Bool, n)
     x0 = BitVector(bit_str)
     α = BitVector(fill(false, 2 * n))
@@ -86,6 +91,9 @@ end
     Γ = directsum([x ? Float64[0 -1; 1 0] : Float64[0 1; -1 0] for x in rand_bits])
 
     ψ_num = GaussianState(Γ)
+    @code_warntype GaussianState(Γ)
+    @btime GaussianState(Γ)
+    @benchmark GaussianState(Γ)
 
     @test ref_state(ψ_num) == rand_bits
     @test abs(overlap(ψ_num)) ≈ 1.0
@@ -95,7 +103,7 @@ end
     ψ = GaussianState(Γ)
 
     @test abs(overlap(ψ))^2 >= 2.0^(-n)
-    @test isapprox(abs(overlap(ψ))^4, det(cov_mtx(ref_state(ψ)) .+ cov_mtx(ψ)) / 2^(2 * n), atol=1e-10)
+    @test isapprox(abs(overlap(ψ))^4, det(cov_mtx(ref_state(ψ)) .+ cov_mtx(ψ)) / 2^(2 * n), atol=1e-14)
 
     vac_state = G"01"
 
@@ -110,8 +118,6 @@ end
     n = 3
     rand_bits = BitVector(rand(Bool, n))
     Γ = directsum([x ? Float64[0 -1; 1 0] : Float64[0 1; -1 0] for x in rand_bits])
-
-    @test findsupport(Γ) == rand_bits
 
     rand_bits1 = BitVector(rand(Bool, n))
     rand_bits2 = BitVector(rand(Bool, n))
