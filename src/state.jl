@@ -34,7 +34,7 @@ overlap(a::GaussianState{T}) where {T} = a.overlap
 cov_mtx(a::GaussianState{T}) where {T} = a.Γ
 
 function cov_mtx(::Type{T}, x::BitVector) where {T<:AbstractFloat}
-    return directsum([xi ? T[0 -1; 1 0] : T[0 1; -1 0] for xi in x])
+    return sparse(directsum([xi ? T[0 -1; 1 0] : T[0 1; -1 0] for xi in x]))
 end
 
 cov_mtx(x::BitVector) = cov_mtx(Float64, x)
@@ -117,7 +117,7 @@ function J_x(::Type{T}, α::BitVector) where {T}
             push!(jjs, jj)
         end
     end
-    return SparseMatrixCOO(jjs, iis, ones(T, length(jjs)), count(α), n)
+    return sparse(jjs, iis, ones(T, length(jjs)), count(α), n)
 end
 
 function overlaptriple(
@@ -133,11 +133,7 @@ function overlaptriple(
     parity2 = pfaffian(Γ2)
 
     if !(parity0 ≈ parity1 ≈ parity2)
-        throw(
-            Warning(
-                "Γ0, Γ1, and Γ2 should have the same Pfaffian, got $parity0, $parity1, and $parity2",
-            ),
-        )
+        @warn "Γ0, Γ1, and Γ2 should have the same Pfaffian, got $parity0, $parity1, and $parity2",
         return zero(Complex{T})
     end
 
@@ -145,22 +141,22 @@ function overlaptriple(
     !iszero(v) || throw(ArgumentError("v should be non-zero"))
 
     mag_α = count(α)
-    iseven(mag_α) || throw(ArgumentError("The number of creation operators should be even"))
+    iseven(mag_α) || throw(ArgumentError("The number of creation operators should be even to preserve parity"))
 
     n = size(Γ0, 1) ÷ 2
 
     D_α = Diagonal([α[i] ? zero(T) : one(T) for i in 1:(2*n)])
     J_α = J_x(Complex{T}, α)
 
-    R_α = zeros(Complex{T}, 6 * n + mag_α, 6 * n + mag_α)
+    R_α = spzeros(Complex{T}, 6 * n + mag_α, 6 * n + mag_α)
     R_α[1:(2*n), 1:(2*n)] = im .* Γ0
-    R_α[1:(2*n), (2*n+1):(4*n)] = -one(T) * I(2 * n)
-    R_α[1:(2*n), (4*n+1):(6*n)] = one(T) * I(2 * n)
-    R_α[(2*n+1):(4*n), 1:(2*n)] = one(T) * I(2 * n)
+    R_α[1:(2*n), (2*n+1):(4*n)] = -sparse(I, 2 * n, 2 * n)
+    R_α[1:(2*n), (4*n+1):(6*n)] = sparse(I, 2 * n, 2 * n)
+    R_α[(2*n+1):(4*n), 1:(2*n)] = sparse(I, 2 * n, 2 * n)
     R_α[(2*n+1):(4*n), (2*n+1):(4*n)] = im .* Γ1
-    R_α[(2*n+1):(4*n), (4*n+1):(6*n)] = -one(T) * I(2 * n)
-    R_α[(4*n+1):(6*n), 1:(2*n)] = -one(T) * I(2 * n)
-    R_α[(4*n+1):(6*n), (2*n+1):(4*n)] = one(T) * I(2 * n)
+    R_α[(2*n+1):(4*n), (4*n+1):(6*n)] = -sparse(I, 2 * n, 2 * n)
+    R_α[(4*n+1):(6*n), 1:(2*n)] = -sparse(I, 2 * n, 2 * n)
+    R_α[(4*n+1):(6*n), (2*n+1):(4*n)] = sparse(I, 2 * n, 2 * n)
     R_α[(4*n+1):(6*n), (4*n+1):(6*n)] = im .* D_α * Γ2 * D_α
     R_α[(4*n+1):(6*n), (6*n+1):(6*n+mag_α)] =
         transpose(J_α) .+ im .* D_α * Γ2 * transpose(J_α)
@@ -168,6 +164,7 @@ function overlaptriple(
     R_α[(6*n+1):(6*n+mag_α), (6*n+1):(6*n+mag_α)] =
         im .* J_α * Γ2 * transpose(J_α)
 
+    # TODO: in case of large n , pfaffian(R_α) and 4^n could be very large
     return parity0 * im^(n + mag_α * (mag_α - 1) / 2) * pfaffian(R_α) / u / v / 4^(n)
 end
 

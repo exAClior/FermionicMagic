@@ -1,6 +1,6 @@
 module FermionicMagic
 
-using LinearAlgebra, Random, LuxurySparse
+using LinearAlgebra, Random, SparseArrays
 # Write your package code here.
 export directsum, findsupport
 export relatebasiselements, overlaptriple, convert

@@ -53,14 +53,15 @@ end
 end
 
 @testset "Convert" begin
-    # TODO: add test
-    # n = 5
-    # x = BitVector(rand(Bool,n))
-    # y = shuffle(x)
-    # @show x,y
-    # Γ = 0.7 .* cov_mtx(x) .+ 0.3 .* cov_mtx(y)
-    # ψ = GaussianState(Γ)
-    # overlap(ψ)
+    n = 5
+    x = BitVector(rand(Bool, n))
+    y = shuffle(x)
+    @show x, y
+    Γ = 0.7 .* cov_mtx(x) .+ 0.3 .* cov_mtx(y)
+    ψ = GaussianState(Γ)
+    overlap(ψ)
+
+    @code_warntype convert()
 
 end
 
@@ -70,6 +71,8 @@ end
     J_α = J_x(ComplexF64, α)
     @test J_α == ComplexF64[1.0 0.0 0.0; 0.0 0.0 1.0]
 
+
+    n = 20
     bit_str = rand(Bool, n)
     x0 = BitVector(bit_str)
     α = BitVector(fill(false, 2 * n))
@@ -77,6 +80,12 @@ end
     Ψ1 = GaussianState(cov_mtx(x0))
     Ψ2 = GaussianState(cov_mtx(x0))
     @test overlaptriple(cov_mtx(Ψ0), cov_mtx(Ψ1), cov_mtx(Ψ2), α, ComplexF64(1.0), ComplexF64(1.0)) ≈ ComplexF64(1.0)
+
+    bit_str2 = copy(bit_str)
+    bit_str2[1] ⊻= true
+    x1 = BitVector(bit_str2)
+    Ψ3 = GaussianState(cov_mtx(x1))
+    @test overlaptriple(cov_mtx(Ψ0), cov_mtx(Ψ1), cov_mtx(Ψ3), α, ComplexF64(1.0), ComplexF64(0.0)) ≈ ComplexF64(0.0)
 end
 
 @testset "Gaussian State" begin
