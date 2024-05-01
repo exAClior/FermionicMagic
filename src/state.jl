@@ -8,14 +8,14 @@ abstract type AbstractGaussianState <: AbstractQCState end # includes Gaussian S
 A struct representing a Gaussian state.
 
 # Fields
-- `Γ::AbstractMatrix{T}`: The covariance matrix of the Gaussian state. 
+- `Γ::MT`: The covariance matrix of the Gaussian state. 
    The order is diagm([Γ_1 Γ_2 ... Γ_n])
    Γ = ⊕ Γ_i = 1 ^ n ( 0  (-1)^xi; - (-1)^xi  0)  
 - `ref_state::BitVector`: A number state acting as the reference of the Gaussian state for phase.
 - `overlap::Complex{T}`: The overlap of the Gaussian state with reference state.
 """
-struct GaussianState{T<:AbstractFloat} <: AbstractGaussianState
-    Γ::AbstractMatrix{T}
+struct GaussianState{T<:AbstractFloat,MT<:AbstractMatrix{T}} <: AbstractGaussianState
+    Γ::MT
     ref_state::BitVector
     overlap::Complex{T}
 end
@@ -47,7 +47,7 @@ macro G_str(a)
         matched === nothing && error("Input should be a string of 0s and 1s")
         x = BitVector(map(x -> (x == '1'), collect(matched[1])))
         Γ = cov_mtx(x)
-        GaussianState{T}(Γ, x, Complex{T}(1.0))
+        GaussianState{T,typeof(Γ)}(Γ, x, one(Complex{T}))
     end
 end
 
@@ -184,7 +184,7 @@ function overlap(d1::GaussianState{T}, d2::GaussianState{T}) where {T}
     σ1, σ2 = pfaffian(cov_mtx(d1)), pfaffian(cov_mtx(d2))
     if !isapprox(σ1, σ2; atol=1e-10)
         @debug "The Pfaffians of the covariance matrices should be the same, now $σ1 and $σ2"
-        return zero(T)
+        return zero(Complex{T})
     end
 
     α, ν = relatebasiselements(ref_state(d2), ref_state(d1))
@@ -194,8 +194,7 @@ function overlap(d1::GaussianState{T}, d2::GaussianState{T}) where {T}
 
     u = overlap(d1)'
     v = exp(im * ν) * overlap(d2)
-    w = overlaptriple(Γ0_p, Γ1_p, Γ2_p, α, u, v)
-    return w'
+    return overlaptriple(Γ0_p, Γ1_p, Γ2_p, α, u, v)'
 end
 
 function evolve(R::AbstractMatrix{T}, a::GaussianState{T}) where {T}
@@ -213,26 +212,27 @@ function evolve(R::AbstractMatrix{T}, a::GaussianState{T}) where {T}
     return GaussianState(Γ0, y, w)
 end
 
-β_k(x::BitVector, k::Int) = count(x[1:(k-1)]) + (x[k] - 1 / 2) * (k + 1)
+β_k(::Type{T}, x::BitVector, k::Int) where {T} = k > 1 ? T(count(view(x, 1, (k - 1)))) : zero(T) + (x[k] - 1 / 2) * (k + 1)
 
 function rot_fock_basis(R::AbstractMatrix{T}, x::BitVector) where {T}
     if isapprox(det(R), one(T))
+        # TODO this causes type instability
         j = findfirst(x -> !isone(x), diag(R))
-        k = findfirst(x -> !iszero(x), R[(j+1):end, j])
+        k = findfirst(x -> !iszero(x), view(R, (j+1):size(R, 1), j)) + j
         ν = atan(R[k, j] / R[j, j])
         if cos(ν / 2)^2 >= 1 / 2
             z = x
-            s = cos(ν / 2)
+            s = Complex{T}(cos(ν / 2))
         else
             z = x .⊻ BitVector([(j == i || k == i) for i in 1:length(x)])
-            β = β_k[x, j] + β_k[x, k]
+            β = β_k(T, x, j) + β_k(T, x, k)
             s = exp(im * π * β) * sin(ν / 2)
         end
     elseif isapprox(det(R), -one(T))
         j, k = findfirst(x -> isapprox(x, one(T)), R)
         j != k || throw(ArgumentError("R should be a reflection matrix"))
         z = x .⊻ BitVector([j == i for i in 1:length(x)])
-        s = exp(im * β_k[x, j])
+        s = exp(im * β_k(T, x, j))
     else
         throw(ArgumentError("R should be a rotation matrix"))
     end

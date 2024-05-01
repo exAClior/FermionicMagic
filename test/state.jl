@@ -1,5 +1,5 @@
-using Test, FermionicMagic, LinearAlgebra, Random
-using FermionicMagic: rand_cov_mtx, pfaffian, J_x, reflection
+using Test, FermionicMagic, LinearAlgebra, Random, SparseArrays
+using FermionicMagic: rand_cov_mtx, pfaffian, J_x, reflection, convert, β_k, rot_fock_basis
 using BenchmarkTools, Profile, ProfileView
 
 
@@ -29,12 +29,17 @@ end
 
 @testset "Evolve" begin
     n = 5
-    Γ = cov_mtx(BitVector(fill(false, n)))
+    bit_str = BitVector(fill(false, n))
+
+    Γ = cov_mtx(bit_str)
     ψ = GaussianState(Γ)
     angle = rand() .* 2 * π
     ii, jj = shuffle(1:2*n)[1:2]
+
     R = LinearAlgebra.Givens(ii, jj, cos(angle), sin(angle)) * Diagonal(ones(2 * n))
+
     ψ2 = evolve(R, ψ)
+
     @test cov_mtx(ψ2) ≈ R * Γ * transpose(R)
     @test abs(overlap(ψ2))^2 >= 1.0 / 2^n
 end
@@ -44,25 +49,32 @@ end
     Γ = rand_cov_mtx(n)
     ψ = GaussianState(Γ)
 
-    @test abs(overlap(ψ, ψ)) ≈ 1.0
+    @test abs(overlap(ψ, ψ)) ≈ one(eltype(Γ))
 
     Γ_op = reflection(n, 1) * Γ * transpose(reflection(n, 1))
     ψ2 = GaussianState(Γ_op)
-
-    # @test_throws ArgumentError abs(overlap(ψ,ψ2)) 
+    @test abs(overlap(ψ, ψ2)) ≈ zero(eltype(Γ))
 end
 
 @testset "Convert" begin
-    n = 5
-    x = BitVector(rand(Bool, n))
-    y = shuffle(x)
-    @show x, y
-    Γ = 0.7 .* cov_mtx(x) .+ 0.3 .* cov_mtx(y)
-    ψ = GaussianState(Γ)
-    overlap(ψ)
+    y = BitVector([true, true])
+    x = BitVector([false, false])
+    Γ = cov_mtx(BitVector([false, false]))
+    θ = π / 3
+    alpha = cos(θ)
+    beta = sin(θ)
+    R = LinearAlgebra.Givens(1, 3, cos(θ), sin(θ))
+    Γ = R * Γ * R'
 
-    @code_warntype convert()
+    ψ1 = GaussianState(Γ)
+    @test cov_mtx(ψ1) ≈ Γ
+    @test ref_state(ψ1) == x
+    @test overlap(ψ1) ≈ ComplexF64(beta)
 
+    ψ2 = convert(ψ1, y)
+    @test cov_mtx(ψ2) ≈ Γ
+    @test ref_state(ψ2) == y
+    @test overlap(ψ2) ≈ ComplexF64(alpha)
 end
 
 @testset "Overlap triple" begin
@@ -86,18 +98,16 @@ end
     x1 = BitVector(bit_str2)
     Ψ3 = GaussianState(cov_mtx(x1))
     @test overlaptriple(cov_mtx(Ψ0), cov_mtx(Ψ1), cov_mtx(Ψ3), α, ComplexF64(1.0), ComplexF64(0.0)) ≈ ComplexF64(0.0)
+
 end
 
 @testset "Gaussian State" begin
     Random.seed!(1234)
-    n = 5
+    n = 10
     rand_bits = BitVector(rand(Bool, n))
-    Γ = directsum([x ? Float64[0 -1; 1 0] : Float64[0 1; -1 0] for x in rand_bits])
+    Γ = cov_mtx(rand_bits)
 
     ψ_num = GaussianState(Γ)
-    @code_warntype GaussianState(Γ)
-    @btime GaussianState(Γ)
-    @benchmark GaussianState(Γ)
 
     @test ref_state(ψ_num) == rand_bits
     @test abs(overlap(ψ_num)) ≈ 1.0

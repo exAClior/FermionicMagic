@@ -50,7 +50,7 @@ function pfaffian(A::AbstractMatrix{T}; overwrite_a=false) where {T<:Number}
     # Check if it's skew-symmetric
     @assert maximum(abs.(A .+ transpose(A))) < 1e-14
 
-    n, _ = size(A)
+    n = size(A, 1)
 
     if n % 2 == 1
         return zero(T)
@@ -87,7 +87,7 @@ function pfaffian(A::AbstractMatrix{T}; overwrite_a=false) where {T<:Number}
             end
 
             # Every interchange corresponds to a "-" in det(P)
-            pfaffian_val *= -1
+            pfaffian_val *= -one(T)
         end
 
         # Now form the Gauss vector
