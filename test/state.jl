@@ -16,6 +16,12 @@ using BenchmarkTools, Profile, ProfileView
         ψ_fin = postmeasure(ψ_fin, ii, x[ii], p_ii)
     end
 
+    p_ii = measureprob(ψ_fin, 1, x[1])
+    @code_warntype postmeasure(ψ_fin, 1, x[1], p_ii)
+    @btime postmeasure($ψ_fin, 1, $x[1], $p_ii)
+    @benchmark postmeasure(ψ_fin, 1, x[1], p_ii)
+
+
     @test isapprox(cov_mtx(ψ_fin), Γ_post, atol=1e-14)
 
     x = BitVector(rand(Bool, n))
