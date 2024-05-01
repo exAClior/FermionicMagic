@@ -107,18 +107,17 @@ end
 relatebasiselements(x::BitVector, y::BitVector) = relatebasiselements(Float64, x, y)
 
 function J_x(::Type{T}, α::BitVector) where {T}
-    mag_α = count(α)
     n = length(α)
-    J_α = zeros(T, mag_α, n)
-    iis, jjs, vals = Int[], Int[], T[]
+    jjs, iis = Int[], Int[]
     jj = 0
     @inbounds for ii in 1:n
         if α[ii]
             jj += 1
-            J_α[jj, ii] = one(T)
+            push!(iis, ii)
+            push!(jjs, jj)
         end
     end
-    return J_α
+    return SparseMatrixCOO(jjs, iis, ones(T, length(jjs)), count(α), n)
 end
 
 function overlaptriple(

@@ -1,6 +1,6 @@
 using Test, FermionicMagic, LinearAlgebra, Random
 using FermionicMagic: rand_cov_mtx, pfaffian, J_x, reflection
-using BenchmarkTools, Profile
+using BenchmarkTools, Profile, ProfileView
 
 
 @testset "measure" begin
@@ -69,11 +69,6 @@ end
     α = BitVector([true, false, true])
     J_α = J_x(ComplexF64, α)
     @test J_α == ComplexF64[1.0 0.0 0.0; 0.0 0.0 1.0]
-
-
-    @code_warntype J_x(ComplexF64, BitVector(rand(Bool, 1000)))
-    @btime J_x(ComplexF64, BitVector(rand(Bool, 1000)))
-    @benchmark J_x(ComplexF64, BitVector(rand(Bool, 1000)))
 
     bit_str = rand(Bool, n)
     x0 = BitVector(bit_str)
