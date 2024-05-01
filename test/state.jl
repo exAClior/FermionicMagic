@@ -44,6 +44,11 @@ end
 
     R = LinearAlgebra.Givens(ii, jj, cos(angle), sin(angle)) * Diagonal(ones(2 * n))
 
+    using FermionicMagic: decompose_rotation, decompose_reflection
+    @code_warntype decompose_rotation(R, bit_str)
+    @code_warntype decompose_reflection(R, bit_str)
+    @code_warntype rot_fock_basis(R, bit_str)
+
     ψ2 = evolve(R, ψ)
 
     @test cov_mtx(ψ2) ≈ R * Γ * transpose(R)

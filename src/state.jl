@@ -214,29 +214,40 @@ end
 
 β_k(::Type{T}, x::BitVector, k::Int) where {T} = k > 1 ? T(count(view(x, 1, (k - 1)))) : zero(T) + (x[k] - 1 / 2) * (k + 1)
 
+function decompose_rotation(R::AbstractMatrix{T}, x::BitVector) where {T}
+    j = something(findfirst(x -> !isone(x), diag(R)), 0)
+    k = something(findfirst(x -> !iszero(x), view(R, (j+1):size(R, 1), j)), 0) + j
+    if iszero(j) || iszero(k)
+        throw(ArgumentError("R should be a rotation matrix"))
+    end
+    ν = @inbounds atan(R[k, j] / R[j, j])
+    if cos(ν / 2)^2 >= 1 / 2
+        z = x
+        s = Complex{T}(cos(ν / 2))
+    else
+        z = x .⊻ BitVector([(j == i || k == i) for i in 1:length(x)])
+        β = β_k(T, x, j) + β_k(T, x, k)
+        s = exp(im * π * β) * sin(ν / 2)
+    end
+    return z, s
+end
+
+function decompose_reflection(R::AbstractMatrix{T}, x::BitVector) where {T}
+    j, k = something(findfirst(x -> isapprox(x, one(T)), R), (0, 0))
+    j != k || throw(ArgumentError("R should be a reflection matrix"))
+    z = x .⊻ BitVector([j == i for i in 1:length(x)])
+    s = exp(im * β_k(T, x, j))
+    return z, s
+end
+
 function rot_fock_basis(R::AbstractMatrix{T}, x::BitVector) where {T}
     if isapprox(det(R), one(T))
-        # TODO this causes type instability
-        j = findfirst(x -> !isone(x), diag(R))
-        k = findfirst(x -> !iszero(x), view(R, (j+1):size(R, 1), j)) + j
-        ν = atan(R[k, j] / R[j, j])
-        if cos(ν / 2)^2 >= 1 / 2
-            z = x
-            s = Complex{T}(cos(ν / 2))
-        else
-            z = x .⊻ BitVector([(j == i || k == i) for i in 1:length(x)])
-            β = β_k(T, x, j) + β_k(T, x, k)
-            s = exp(im * π * β) * sin(ν / 2)
-        end
+        return decompose_rotation(R, x)
     elseif isapprox(det(R), -one(T))
-        j, k = findfirst(x -> isapprox(x, one(T)), R)
-        j != k || throw(ArgumentError("R should be a reflection matrix"))
-        z = x .⊻ BitVector([j == i for i in 1:length(x)])
-        s = exp(im * β_k(T, x, j))
+        return decompose_reflection(R, x)
     else
         throw(ArgumentError("R should be a rotation matrix"))
     end
-    return z, s
 end
 
 # j: fermion index , s:: fermion occupation 
